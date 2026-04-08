@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 Masters — Player Model Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--green:#1a4a2e;--green-mid:#2d6b45;--gold:#c9a84c;--gold-light:#e8c97a;--cream:#f5f0e8;--white:#fff;--gray:#6b6b6b;--gray-light:#d0c9ba;--text:#1a1a1a;--muted:#5a5a5a;--pass:#1a6b3c;--override:#7a5200;--fail:#8b1a1a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);min-height:100vh}
+
+/* HEADER */
+header{background:var(--green);padding:2rem 2.5rem 1.5rem;border-bottom:3px solid var(--gold)}
+.hi{max-width:1300px;margin:0 auto}
+.eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.15em;color:var(--gold-light);text-transform:uppercase;margin-bottom:8px}
+.title{font-family:'Playfair Display',serif;font-size:clamp(22px,4vw,38px);font-weight:700;color:#fff;line-height:1.1;margin-bottom:6px}
+.sub{font-size:13px;color:rgba(255,255,255,.5);font-weight:300}
+.hpills{margin-top:.75rem;display:flex;gap:8px;flex-wrap:wrap}
+.hpill{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;background:rgba(201,168,76,.18);color:var(--gold-light);padding:3px 9px;border-radius:2px;border:1px solid rgba(201,168,76,.25)}
+
+main{max-width:1300px;margin:0 auto;padding:1.5rem 1.5rem 4rem}
+
+/* SECTION LABEL */
+.slabel{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--gray);display:flex;align-items:center;gap:8px;margin-bottom:1rem}
+.slabel::after{content:'';flex:1;height:1px;background:var(--gray-light)}
+
+/* PANEL */
+.panel{background:var(--white);border:1px solid var(--gray-light);border-radius:4px;padding:1.5rem;margin-bottom:1rem}
+
+/* WINNER PROFILE GRID */
+.wgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.wcard{background:var(--cream);border:1.5px solid var(--gray-light);border-radius:3px;padding:1rem;transition:border-color .2s,background .2s}
+.wcard.on{border-color:var(--green-mid);background:#eef7f2}
+.wcard-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.wcard-name{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--gray)}
+.wcard-val{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--green);line-height:1;margin-bottom:2px}
+.wcard-note{font-size:10px;color:var(--muted);margin-bottom:0}
+.wcard-slider{display:none;margin-top:10px;border-top:1px solid var(--gray-light);padding-top:10px}
+.wcard.on .wcard-slider{display:block}
+.srow{display:flex;align-items:center;gap:8px}
+.srow label{font-size:10px;color:var(--gray);white-space:nowrap;font-family:'DM Mono',monospace;min-width:70px}
+.srow input[type=range]{flex:1}
+.sval{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--green);min-width:44px;text-align:right}
+.pcount{font-size:10px;color:var(--muted);margin-top:5px;font-family:'DM Mono',monospace}
+.pcount b{color:var(--green)}
+
+/* FLAG CARDS */
+.fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.fcard{background:var(--cream);border:1.5px solid var(--gray-light);border-radius:3px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:border-color .2s,background .2s}
+.fcard.on{border-color:var(--green-mid);background:#eef7f2}
+.fcard-left{}
+.fcard-name{font-size:12px;font-weight:500;margin-bottom:2px}
+.fcard-sub{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
+
+/* TOGGLE SWITCH */
+.tswitch{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}
+.tswitch input{opacity:0;width:0;height:0}
+.tslider{position:absolute;cursor:pointer;inset:0;background:var(--gray-light);border-radius:20px;transition:.2s}
+.tslider:before{position:absolute;content:'';height:14px;width:14px;left:3px;bottom:3px;background:var(--white);border-radius:50%;transition:.2s}
+.tswitch input:checked+.tslider{background:var(--green-mid)}
+.tswitch input:checked+.tslider:before{transform:translateX(16px)}
+
+/* WEIGHTS */
+.wweights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:.75rem}
+.wwcard{background:var(--cream);border:1px solid var(--gray-light);border-radius:3px;padding:1rem}
+.wwname{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:4px}
+.wwval{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--green);line-height:1;margin-bottom:8px}
+.wfooter{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.tpill{font-family:'DM Mono',monospace;font-size:11px;display:flex;align-items:center;gap:6px}
+.tdot{width:7px;height:7px;border-radius:50%;background:var(--pass);transition:background .2s}
+.tdot.warn{background:#c0392b}
+.presets{display:flex;gap:6px;flex-wrap:wrap}
+.pbtn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.04em;padding:4px 9px;border:1px solid var(--gray-light);border-radius:2px;background:transparent;color:var(--gray);cursor:pointer;transition:all .15s}
+.pbtn:hover{border-color:var(--green-mid);color:var(--green)}
+.pbtn.active{background:var(--green);color:#fff;border-color:var(--green)}
+
+/* FILTER BAR */
+.fbar{background:var(--white);border:1px solid var(--gray-light);border-radius:4px;padding:.875rem 1.5rem;margin-bottom:1rem;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+select{font-family:'DM Sans',sans-serif;font-size:12px;padding:5px 10px;border:1px solid var(--gray-light);border-radius:3px;background:var(--white);color:var(--text);cursor:pointer;outline:none}
+select:focus{border-color:var(--green-mid)}
+.fsep{width:1px;height:18px;background:var(--gray-light)}
+.flabel{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray);cursor:pointer}
+.flabel input{cursor:pointer;accent-color:var(--green)}
+
+/* RESULTS */
+.rhead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.5rem}
+.rcount{font-family:'DM Mono',monospace;font-size:11px;color:var(--gray)}
+.legend{display:flex;gap:1.2rem;flex-wrap:wrap;font-size:11px;color:var(--gray)}
+.ldot{width:7px;height:7px;border-radius:50%;display:inline-block}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;background:var(--white);border:1px solid var(--gray-light);border-radius:4px;overflow:hidden;font-size:13px}
+thead th{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--gray);background:var(--cream);padding:9px 10px;text-align:left;border-bottom:2px solid var(--gray-light);white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover,thead th.sorted{color:var(--green)}
+thead th.r{text-align:right}
+tbody tr{border-bottom:1px solid rgba(208,201,186,.4);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#faf8f4}
+tbody tr.top3{background:#f5faf7}
+td{padding:8px 10px;vertical-align:middle}
+td.r{text-align:right}
+.rnum{font-family:'DM Mono',monospace;font-size:12px;color:var(--gray);width:28px}
+.rnum.gold{color:var(--gold);font-weight:500}
+.tdot2{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;flex-shrink:0}
+.pname{font-weight:500;font-size:13px}
+.pcell{display:flex;align-items:center;gap:3px;flex-wrap:wrap}
+.tag{font-family:'DM Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px;border:1px solid}
+.tliv{background:rgba(26,74,46,.08);color:var(--green-mid);border-color:rgba(26,74,46,.2)}
+.tflag{background:#fff8e6;color:#7a5200;border-color:rgba(122,82,0,.2)}
+.tdebut{background:#fdf0f0;color:#8b1a1a;border-color:rgba(139,26,26,.2)}
+.tam{background:#f0f0ff;color:#333399;border-color:rgba(51,51,153,.2)}
+.tbadge{font-family:'DM Mono',monospace;font-size:10px;padding:2px 6px;border-radius:2px}
+.tT1{background:#e8f5ed;color:#1a6b3c}.tT2{background:#e6f0fb;color:#1a4a8b}.tT3{background:#fff8e6;color:#7a5200}.tT4{background:#f5f5f5;color:#555}
+.gpass{color:var(--pass);font-size:11px;font-family:'DM Mono',monospace}
+.gover{color:var(--override);font-size:11px;font-family:'DM Mono',monospace}
+.gfail{color:var(--fail);font-size:11px;font-family:'DM Mono',monospace}
+.scell{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.snum{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;min-width:28px;text-align:right}
+.bbg{width:45px;height:4px;background:var(--gray-light);border-radius:2px;overflow:hidden;flex-shrink:0}
+.bfill{height:4px;border-radius:2px}
+.mono{font-family:'DM Mono',monospace;font-size:12px}
+.ae{color:var(--green);font-weight:500}.ag{color:var(--green-mid)}.am{color:var(--muted)}.ap{color:var(--fail)}.an{color:var(--gray);font-style:italic}
+.wins{font-family:'DM Mono',monospace;font-size:12px;text-align:right}
+.wins.w{color:var(--gold);font-weight:500}
+.bf{font-size:11px;color:var(--gray);font-family:'DM Mono',monospace;text-align:right;white-space:nowrap}
+.src{font-size:9px;color:var(--gray-light);font-family:'DM Mono',monospace;vertical-align:super;margin-left:2px}
+
+/* RANGE INPUTS */
+input[type=range]{-webkit-appearance:none;appearance:none;height:3px;background:var(--gray-light);border-radius:2px;outline:none;cursor:pointer;width:100%}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--green);border:2px solid #fff;box-shadow:0 0 0 1px var(--green);cursor:pointer}
+
+footer{background:var(--green);color:rgba(255,255,255,.4);text-align:center;padding:1.25rem;font-size:11px;font-family:'DM Mono',monospace;letter-spacing:.05em;border-top:3px solid var(--gold);margin-top:2rem}
+
+@media(max-width:800px){
+  .wgrid{grid-template-columns:repeat(2,1fr)}
+  .fgrid{grid-template-columns:repeat(1,1fr)}
+  .wweights{grid-template-columns:1fr}
+  header{padding:1.25rem 1rem}
+  main{padding:1rem}
+  .bf{display:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hi">
+    <div class="eyebrow">Augusta National Golf Club · 90th Masters Tournament</div>
+    <h1 class="title">2026 Masters Player Dashboard</h1>
+    <div class="sub">Winner benchmarks · Adjustable model weights · Full 91-player field</div>
+    <div class="hpills">
+      <span class="hpill">April 9–12, 2026</span>
+      <span class="hpill">PGA Tour stats: pgatour.com</span>
+      <span class="hpill">LIV stats: DataGolf estimates</span>
+      <span class="hpill">Augusta wins: ESPN verified</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ── 1. WINNER PROFILE ── -->
+<div class="panel">
+  <div class="slabel">Augusta national winner profile — 2015–2025 composite <span style="font-size:10px;color:var(--muted);letter-spacing:0;text-transform:none;font-weight:400;font-family:'DM Sans',sans-serif">Toggle ON to hard-filter the table by each benchmark</span></div>
+
+  <div class="wgrid">
+
+    <div class="wcard" id="wc-app">
+      <div class="wcard-top">
+        <div class="wcard-name">SG: Approach / rnd</div>
+        <label class="tswitch"><input type="checkbox" id="en-app" onchange="toggleFilter('app')"><span class="tslider"></span></label>
+      </div>
+      <div class="wcard-val">+0.85</div>
+      <div class="wcard-note">Most predictive stat · 10 straight winners cleared this bar</div>
+      <div class="wcard-slider">
+        <div class="srow">
+          <label>Min rank</label>
+          <input type="range" min="1" max="100" step="1" value="30" id="sl-app" oninput="updateSlider('app')">
+          <span class="sval" id="sv-app">Top 30</span>
+        </div>
+        <div class="pcount" id="pc-app"></div>
+      </div>
+    </div>
+
+    <div class="wcard" id="wc-t2g">
+      <div class="wcard-top">
+        <div class="wcard-name">SG: Tee-to-Green</div>
+        <label class="tswitch"><input type="checkbox" id="en-t2g" onchange="toggleFilter('t2g')"><span class="tslider"></span></label>
+      </div>
+      <div class="wcard-val">+2.50</div>
+      <div class="wcard-note">Gate stat · 14 straight winners entered top-25 T2G</div>
+      <div class="wcard-slider">
+        <div class="srow">
+          <label>Gate cutoff</label>
+          <input type="range" min="10" max="75" step="5" value="25" id="sl-t2g" oninput="updateSlider('t2g')">
+          <span class="sval" id="sv-t2g">Top 25</span>
+        </div>
+        <div class="pcount" id="pc-t2g"></div>
+      </div>
+    </div>
+
+    <div class="wcard" id="wc-dist">
+      <div class="wcard-top">
+        <div class="wcard-name">Driving distance</div>
+        <label class="tswitch"><input type="checkbox" id="en-dist" onchange="toggleFilter('dist')"><span class="tslider"></span></label>
+      </div>
+      <div class="wcard-val">300+ yds</div>
+      <div class="wcard-note">Par-5 access essential · Every winner ranked top-100 dist.</div>
+      <div class="wcard-slider">
+        <div class="srow">
+          <label>Min dist rank</label>
+          <input type="range" min="10" max="130" step="5" value="100" id="sl-dist" oninput="updateSlider('dist')">
+          <span class="sval" id="sv-dist">Top 100</span>
+        </div>
+        <div class="pcount" id="pc-dist"></div>
+      </div>
+    </div>
+
+    <div class="wcard" id="wc-hist">
+      <div class="wcard-top">
+        <div class="wcard-name">Augusta history</div>
+        <label class="tswitch"><input type="checkbox" id="en-hist" onchange="toggleFilter('hist')"><span class="tslider"></span></label>
+      </div>
+      <div class="wcard-val">Prior top-15</div>
+      <div class="wcard-note">Every winner since 2010 had prior top-40 at Augusta</div>
+      <div class="wcard-slider">
+        <div class="srow">
+          <label>Min score</label>
+          <input type="range" min="0" max="80" step="5" value="20" id="sl-hist" oninput="updateSlider('hist')">
+          <span class="sval" id="sv-hist">20+</span>
+        </div>
+        <div class="pcount" id="pc-hist"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="fgrid">
+
+    <div class="fcard" id="fc-debut">
+      <div class="fcard-left">
+        <div class="fcard-name">No first-timers</div>
+        <div class="fcard-sub">Only Zoeller ('79) won on debut — removes all debutants</div>
+      </div>
+      <label class="tswitch"><input type="checkbox" id="en-debut" onchange="render()"><span class="tslider"></span></label>
+    </div>
+
+    <div class="fcard" id="fc-gate">
+      <div class="fcard-left">
+        <div class="fcard-name">Gate pass or win only</div>
+        <div class="fcard-sub">14 straight winners met T2G top-25 bar or won Augusta</div>
+      </div>
+      <label class="tswitch"><input type="checkbox" id="en-gate" onchange="render()"><span class="tslider"></span></label>
+    </div>
+
+    <div class="fcard" id="fc-cerem">
+      <div class="fcard-left">
+        <div class="fcard-name">Hide ceremonial starters</div>
+        <div class="fcard-sub">Removes Couples, Singh, Olazabal, Weir, Cabrera, Z. Johnson</div>
+      </div>
+      <label class="tswitch"><input type="checkbox" id="en-cerem" onchange="render()" checked><span class="tslider"></span></label>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── 2. MODEL WEIGHTS ── -->
+<div class="panel">
+  <div class="slabel">Model weights — drag to rerank the field</div>
+  <div class="wweights">
+    <div class="wwcard">
+      <div class="wwname">SG: Approach</div>
+      <div class="wwval" id="w1-val">40%</div>
+      <input type="range" min="0" max="100" step="5" value="40" id="w1" oninput="syncW(1)" style="width:100%">
+    </div>
+    <div class="wwcard">
+      <div class="wwname">Augusta history</div>
+      <div class="wwval" id="w2-val">35%</div>
+      <input type="range" min="0" max="100" step="5" value="35" id="w2" oninput="syncW(2)" style="width:100%">
+    </div>
+    <div class="wwcard">
+      <div class="wwname">Recent form</div>
+      <div class="wwval" id="w3-val">25%</div>
+      <input type="range" min="0" max="100" step="5" value="25" id="w3" oninput="syncW(3)" style="width:100%">
+    </div>
+  </div>
+  <div class="wfooter">
+    <div class="tpill">
+      <div class="tdot" id="tdot"></div>
+      <span id="ttxt" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gray)">Total: 100%</span>
+    </div>
+    <div class="presets">
+      <button class="pbtn active" onclick="setPreset('balanced',this)">Balanced</button>
+      <button class="pbtn" onclick="setPreset('stats',this)">Stats only</button>
+      <button class="pbtn" onclick="setPreset('history',this)">History heavy</button>
+      <button class="pbtn" onclick="setPreset('form',this)">Form heavy</button>
+      <button class="pbtn" onclick="setPreset('pool',this)">Pool format</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 3. QUICK FILTERS ── -->
+<div class="fbar">
+  <select id="f-tier" onchange="render()">
+    <option value="all">All tiers</option>
+    <option value="T1">Tier 1</option><option value="T2">Tier 2</option>
+    <option value="T3">Tier 3</option><option value="T4">Tier 4</option>
+  </select>
+  <select id="f-liv" onchange="render()">
+    <option value="all">All tours</option>
+    <option value="pga">PGA Tour only</option>
+    <option value="liv">LIV only</option>
+  </select>
+  <select id="f-sort" onchange="render()">
+    <option value="score">Sort: model score</option>
+    <option value="appRank">Sort: app rank</option>
+    <option value="histScore">Sort: history</option>
+    <option value="formScore">Sort: form</option>
+    <option value="name">Sort: A–Z</option>
+  </select>
+  <div class="fsep"></div>
+  <label class="flabel"><input type="checkbox" id="f-flags" onchange="render()" checked> Show flags</label>
+</div>
+
+<!-- ── RESULTS ── -->
+<div class="rhead">
+  <span class="rcount" id="rcount">— players</span>
+  <div class="legend">
+    <span><span class="ldot" style="background:#1D9E75"></span> T1</span>
+    <span><span class="ldot" style="background:#378ADD"></span> T2</span>
+    <span><span class="ldot" style="background:#BA7517"></span> T3</span>
+    <span><span class="ldot" style="background:#888780"></span> T4</span>
+  </div>
+</div>
+
+<div style="overflow-x:auto">
+<table>
+  <thead><tr>
+    <th style="width:32px">#</th>
+    <th onclick="setSort('name')">Player</th>
+    <th class="r" onclick="setSort('tier')">Tier</th>
+    <th class="r" onclick="setSort('appRank')">App rank</th>
+    <th class="r">App SG</th>
+    <th class="r">Dist rank</th>
+    <th class="r" onclick="setSort('augWins')">Wins</th>
+    <th class="r">Best finish</th>
+    <th class="r" onclick="setSort('gate')">Gate</th>
+    <th class="r sorted" onclick="setSort('score')">Score</th>
+  </tr></thead>
+  <tbody id="tbody"></tbody>
+</table>
+</div>
+
+<p style="font-size:10px;color:var(--gray);margin-top:.75rem;font-family:'DM Mono',monospace;line-height:1.8">
+  <b>PGA Tour stats</b>: pgatour.com betting profiles (verified) &nbsp;·&nbsp; <b>LIV stats</b>: DataGolf estimates (unverified) &nbsp;·&nbsp; <b>Augusta wins</b>: ESPN all-time list &nbsp;·&nbsp; Scores are model outputs only, not official rankings
+</p>
+
+</main>
+
+<footer>2026 Masters Player Model &nbsp;·&nbsp; Not official Augusta National data</footer>
+
+<script>
+// ── DATA ──
+// appRank/appVal = pgatour.com verified for PGA Tour players | null + liv:true = DataGolf estimate
+// distRank = pgatour.com verified where available
+const P = [
+  // ── VERIFIED PGA TOUR STATS (pgatour.com) ──
+  {name:"Morikawa",tier:"T1",appRank:1,appVal:1.066,distRank:50,augWins:0,bestFinish:"T3 (2024)",histScore:72,formScore:85,gate:"pass",flags:["HEALTH"],liv:false,debut:false,ceremonial:false},
+  {name:"Koepka",tier:"T3",appRank:3,appVal:0.913,distRank:45,augWins:0,bestFinish:"T2 (2019,23)",histScore:50,formScore:65,gate:"fail",flags:["MC 2025"],liv:false,debut:false,ceremonial:false},
+  {name:"Si Woo Kim",tier:"T3",appRank:3,appVal:0.912,distRank:95,augWins:0,bestFinish:"T12 (2021)",histScore:20,formScore:72,gate:"pass",flags:["avg 72.50"],liv:false,debut:false,ceremonial:false},
+  {name:"Adam Scott",tier:"T4",appRank:3,appVal:0.912,distRank:25,augWins:1,bestFinish:"Won (2013)",histScore:55,formScore:65,gate:"override",flags:["MC 2025"],liv:false,debut:false,ceremonial:false},
+  {name:"Berger",tier:"T4",appRank:6,appVal:0.849,distRank:60,augWins:0,bestFinish:"T10 (2016)",histScore:30,formScore:65,gate:"pass",flags:["putting 101st"],liv:false,debut:false,ceremonial:false},
+  {name:"Fitzpatrick",tier:"T2",appRank:7,appVal:0.810,distRank:69,augWins:0,bestFinish:"T10 (2023)",histScore:60,formScore:90,gate:"pass",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Bhatia",tier:"T4",appRank:8,appVal:null,distRank:55,augWins:0,bestFinish:"T35 (2024)",histScore:15,formScore:88,gate:"pass",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"McIlroy",tier:"T1",appRank:10,appVal:0.748,distRank:14,augWins:1,bestFinish:"Won (2025)",histScore:80,formScore:60,gate:"override",flags:["BACK"],liv:false,debut:false,ceremonial:false},
+  {name:"Rose",tier:"T3",appRank:10,appVal:0.763,distRank:75,augWins:0,bestFinish:"Playoff L '25",histScore:72,formScore:60,gate:"pass",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Hojgaard N.",tier:"T4",appRank:12,appVal:0.712,distRank:9,augWins:0,bestFinish:"T16 (2024)",histScore:35,formScore:82,gate:"pass",flags:["MC 2025"],liv:false,debut:false,ceremonial:false},
+  {name:"Schauffele",tier:"T2",appRank:14,appVal:0.662,distRank:31,augWins:0,bestFinish:"T3 (2021)",histScore:85,formScore:82,gate:"pass",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Conners",tier:"T4",appRank:16,appVal:0.622,distRank:112,augWins:0,bestFinish:"T6 (2022)",histScore:78,formScore:55,gate:"pass",flags:["putting 140th"],liv:false,debut:false,ceremonial:false},
+  {name:"Hovland",tier:"T3",appRank:19,appVal:0.575,distRank:126,augWins:0,bestFinish:"T7 (2023)",histScore:42,formScore:55,gate:"pass",flags:["OTT 132nd"],liv:false,debut:false,ceremonial:false},
+  {name:"Clark W.",tier:"T4",appRank:21,appVal:0.542,distRank:29,augWins:0,bestFinish:"T10 (2023)",histScore:22,formScore:35,gate:"fail",flags:["putting 158th"],liv:false,debut:false,ceremonial:false},
+  {name:"Young",tier:"T2",appRank:23,appVal:0.499,distRank:45,augWins:0,bestFinish:"T7 (2023)",histScore:38,formScore:92,gate:"pass",flags:["MC 2025"],liv:false,debut:false,ceremonial:false},
+  {name:"Lowry",tier:"T4",appRank:26,appVal:0.474,distRank:128,augWins:0,bestFinish:"T3 (2022)",histScore:35,formScore:42,gate:"fail",flags:["dist 128th"],liv:false,debut:false,ceremonial:false},
+  {name:"Fleetwood",tier:"T2",appRank:28,appVal:0.459,distRank:117,augWins:0,bestFinish:"T3 (2024)",histScore:65,formScore:78,gate:"pass",flags:["175-225yd weak"],liv:false,debut:false,ceremonial:false},
+  {name:"Henley",tier:"T3",appRank:47,appVal:0.313,distRank:142,augWins:0,bestFinish:"T4 (2023)",histScore:35,formScore:58,gate:"fail",flags:["MC 2025","dist 142nd"],liv:false,debut:false,ceremonial:false},
+  {name:"Spieth",tier:"T3",appRank:33,appVal:0.412,distRank:48,augWins:1,bestFinish:"Won (2015)",histScore:75,formScore:52,gate:"override",flags:["T2G borderline"],liv:false,debut:false,ceremonial:false},
+  {name:"Matsuyama",tier:"T3",appRank:34,appVal:0.429,distRank:70,augWins:1,bestFinish:"Won (2021)",histScore:68,formScore:62,gate:"override",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Aberg",tier:"T1",appRank:36,appVal:0.397,distRank:31,augWins:0,bestFinish:"T2 (2024)",histScore:70,formScore:80,gate:"pass",flags:["APP borderline"],liv:false,debut:false,ceremonial:false},
+  {name:"Knapp",tier:"T4",appRank:42,appVal:0.342,distRank:8,augWins:0,bestFinish:"T55 (2024)",histScore:8,formScore:78,gate:"fail",flags:["elite putter"],liv:false,debut:false,ceremonial:false},
+  {name:"Min Woo Lee",tier:"T4",appRank:50,appVal:0.266,distRank:13,augWins:0,bestFinish:"T14 (2022)",histScore:25,formScore:78,gate:"fail",flags:["MC 2025"],liv:false,debut:false,ceremonial:false},
+  {name:"Homa",tier:"T4",appRank:52,appVal:0.250,distRank:55,augWins:0,bestFinish:"T3 (2024)",histScore:45,formScore:42,gate:"fail",flags:["MC 2026"],liv:false,debut:false,ceremonial:false},
+  {name:"Cantlay",tier:"T4",appRank:71,appVal:0.146,distRank:123,augWins:0,bestFinish:"T9 (2019)",histScore:25,formScore:48,gate:"fail",flags:["no win since '22"],liv:false,debut:false,ceremonial:false},
+  {name:"Scheffler",tier:"T1",appRank:82,appVal:0.080,distRank:37,augWins:2,bestFinish:"Won (2022,24)",histScore:95,formScore:65,gate:"override",flags:["APP gate fail"],liv:false,debut:false,ceremonial:false},
+  {name:"Burns",tier:"T4",appRank:88,appVal:-0.012,distRank:17,augWins:0,bestFinish:"T29 (2023)",histScore:18,formScore:45,gate:"fail",flags:["approach 88th"],liv:false,debut:false,ceremonial:false},
+  {name:"MacIntyre",tier:"T3",appRank:123,appVal:-0.247,distRank:86,augWins:0,bestFinish:"T12 (2021)",histScore:30,formScore:75,gate:"fail",flags:["MC 2025","APP 123rd"],liv:false,debut:false,ceremonial:false},
+  {name:"Bradley",tier:"T4",appRank:144,appVal:-0.469,distRank:62,augWins:0,bestFinish:"T22 (2024)",histScore:12,formScore:42,gate:"fail",flags:["APP 144th"],liv:false,debut:false,ceremonial:false},
+  // PGA Tour - unverified approach rank (no Masters betting profile found)
+  {name:"Im",tier:"T4",appRank:null,appVal:0.129,distRank:80,augWins:0,bestFinish:"T2 (2020)",histScore:55,formScore:30,gate:"fail",flags:["weak 2026 app"],liv:false,debut:false,ceremonial:false},
+  {name:"Day",tier:"T4",appRank:null,appVal:null,distRank:65,augWins:0,bestFinish:"T2 (2011)",histScore:58,formScore:50,gate:"fail",flags:["stats N/A"],liv:false,debut:false,ceremonial:false},
+  {name:"Straka",tier:"T4",appRank:null,appVal:null,distRank:85,augWins:0,bestFinish:"T16 (2024)",histScore:28,formScore:60,gate:"pass",flags:["MC 2025"],liv:false,debut:false,ceremonial:false},
+  {name:"Thomas J.",tier:"T4",appRank:null,appVal:null,distRank:55,augWins:0,bestFinish:"T8 (2022)",histScore:30,formScore:35,gate:"fail",flags:["post-surgery","poor app"],liv:false,debut:false,ceremonial:false},
+  {name:"Spaun",tier:"T4",appRank:null,appVal:null,distRank:50,augWins:0,bestFinish:"T23 (2024)",histScore:10,formScore:68,gate:"fail",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Smith C.",tier:"T4",appRank:null,appVal:null,distRank:55,augWins:0,bestFinish:"T2 (2021)",histScore:42,formScore:40,gate:"fail",flags:["MC x5 majors"],liv:false,debut:false,ceremonial:false},
+  {name:"English",tier:"T4",appRank:null,appVal:null,distRank:80,augWins:0,bestFinish:"T12 (2025)",histScore:28,formScore:48,gate:"fail",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Harman",tier:"T4",appRank:null,appVal:null,distRank:140,augWins:0,bestFinish:"T15 (2024)",histScore:15,formScore:38,gate:"fail",flags:["short off tee"],liv:false,debut:false,ceremonial:false},
+  {name:"Hojgaard R.",tier:"T4",appRank:null,appVal:null,distRank:70,augWins:0,bestFinish:"T32 (2025)",histScore:12,formScore:52,gate:"fail",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Kim M.",tier:"T4",appRank:null,appVal:null,distRank:90,augWins:0,bestFinish:"T22 (2019)",histScore:10,formScore:38,gate:"fail",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Kitayama",tier:"T4",appRank:null,appVal:null,distRank:60,augWins:0,bestFinish:"T14 (2024)",histScore:18,formScore:52,gate:"fail",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Li H.",tier:"T4",appRank:null,appVal:null,distRank:80,augWins:0,bestFinish:"T14 (2022)",histScore:18,formScore:28,gate:"fail",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"McCarty",tier:"T4",appRank:null,appVal:null,distRank:85,augWins:0,bestFinish:"T14 (2025)",histScore:12,formScore:35,gate:"fail",flags:["MC x2"],liv:false,debut:false,ceremonial:false},
+  {name:"McNealy",tier:"T4",appRank:null,appVal:null,distRank:70,augWins:0,bestFinish:"T16 (2024)",histScore:15,formScore:45,gate:"fail",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Noren",tier:"T4",appRank:null,appVal:null,distRank:85,augWins:0,bestFinish:"T62 (2019)",histScore:5,formScore:40,gate:"fail",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Taylor N.",tier:"T4",appRank:null,appVal:null,distRank:65,augWins:0,bestFinish:"T40 (2024)",histScore:8,formScore:55,gate:"fail",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Willett",tier:"T4",appRank:null,appVal:null,distRank:80,augWins:1,bestFinish:"Won (2016)",histScore:12,formScore:30,gate:"override",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Woodland",tier:"T4",appRank:null,appVal:null,distRank:30,augWins:0,bestFinish:"T14 (2023)",histScore:15,formScore:58,gate:"fail",flags:["won Houston"],liv:false,debut:false,ceremonial:false},
+  {name:"Fox R.",tier:"T4",appRank:null,appVal:null,distRank:90,augWins:0,bestFinish:"T40 (2022)",histScore:8,formScore:42,gate:"fail",flags:[],liv:false,debut:false,ceremonial:false},
+  {name:"Potgieter",tier:"T4",appRank:null,appVal:null,distRank:20,augWins:0,bestFinish:"MC (2025)",histScore:5,formScore:42,gate:"fail",flags:[],liv:false,debut:false,ceremonial:false},
+  // ── LIV PLAYERS — DataGolf estimates only ──
+  {name:"Rahm",tier:"T1",appRank:null,appVal:null,distRank:20,augWins:1,bestFinish:"Won (2023)",histScore:92,formScore:88,gate:"override",flags:["LIV est."],liv:true,debut:false,ceremonial:false},
+  {name:"Reed",tier:"T3",appRank:null,appVal:null,distRank:60,augWins:1,bestFinish:"Won (2018)",histScore:80,formScore:70,gate:"override",flags:["LIV est."],liv:true,debut:false,ceremonial:false},
+  {name:"DeChambeau",tier:"T1",appRank:null,appVal:null,distRank:5,augWins:0,bestFinish:"T5 (2025)",histScore:60,formScore:85,gate:"override",flags:["LIV est.","fade pattern"],liv:true,debut:false,ceremonial:false},
+  {name:"Garcia",tier:"T4",appRank:null,appVal:null,distRank:55,augWins:1,bestFinish:"Won (2017)",histScore:22,formScore:38,gate:"override",flags:["LIV est.","MC 2025"],liv:true,debut:false,ceremonial:false},
+  {name:"Hatton",tier:"T4",appRank:null,appVal:null,distRank:80,augWins:0,bestFinish:"T9 (2024)",histScore:38,formScore:42,gate:"fail",flags:["LIV est.","poor 2026"],liv:true,debut:false,ceremonial:false},
+  {name:"Johnson D.",tier:"T4",appRank:null,appVal:null,distRank:30,augWins:1,bestFinish:"Won (2020)",histScore:20,formScore:18,gate:"override",flags:["LIV est.","MC x2"],liv:true,debut:false,ceremonial:false},
+  {name:"Schwartzel",tier:"T4",appRank:null,appVal:null,distRank:75,augWins:1,bestFinish:"Won (2011)",histScore:8,formScore:12,gate:"override",flags:["LIV est.","poor form"],liv:true,debut:false,ceremonial:false},
+  {name:"Watson B.",tier:"T4",appRank:null,appVal:null,distRank:50,augWins:2,bestFinish:"Won (2014)",histScore:18,formScore:28,gate:"override",flags:["LIV est.","late career"],liv:true,debut:false,ceremonial:false},
+  {name:"Ortiz C.",tier:"T4",appRank:null,appVal:null,distRank:70,augWins:0,bestFinish:"T22 (2021)",histScore:8,formScore:35,gate:"fail",flags:["LIV est."],liv:true,debut:false,ceremonial:false},
+  {name:"McKibbin T.",tier:"T4",appRank:null,appVal:null,distRank:60,augWins:0,bestFinish:"Debut",histScore:0,formScore:40,gate:"fail",flags:["LIV est."],liv:true,debut:true,ceremonial:false},
+  // ── CEREMONIAL ──
+  {name:"Cabrera",tier:"T4",appRank:null,appVal:null,distRank:999,augWins:1,bestFinish:"Won (2009)",histScore:5,formScore:5,gate:"override",flags:[],liv:false,debut:false,ceremonial:true},
+  {name:"Couples",tier:"T4",appRank:null,appVal:null,distRank:999,augWins:1,bestFinish:"Won (1992)",histScore:5,formScore:5,gate:"override",flags:[],liv:false,debut:false,ceremonial:true},
+  {name:"Johnson Z.",tier:"T4",appRank:null,appVal:null,distRank:999,augWins:1,bestFinish:"Won (2007)",histScore:5,formScore:18,gate:"override",flags:[],liv:false,debut:false,ceremonial:true},
+  {name:"Olazabal",tier:"T4",appRank:null,appVal:null,distRank:999,augWins:2,bestFinish:"Won (1999)",histScore:5,formScore:5,gate:"override",flags:[],liv:false,debut:false,ceremonial:true},
+  {name:"Singh V.",tier:"T4",appRank:null,appVal:null,distRank:999,augWins:1,bestFinish:"Won (2000)",histScore:5,formScore:5,gate:"override",flags:[],liv:false,debut:false,ceremonial:true},
+  {name:"Weir M.",tier:"T4",appRank:null,appVal:null,distRank:999,augWins:1,bestFinish:"Won (2003)",histScore:5,formScore:5,gate:"override",flags:[],liv:false,debut:false,ceremonial:true},
+  // ── DEBUTANTS ──
+  {name:"Bridgeman",tier:"T4",appRank:2,appVal:null,distRank:40,augWins:0,bestFinish:"Debut",histScore:0,formScore:90,gate:"fail",flags:["ARG weak"],liv:false,debut:true,ceremonial:false},
+  {name:"Gotterup",tier:"T3",appRank:7,appVal:null,distRank:15,augWins:0,bestFinish:"Debut",histScore:0,formScore:88,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Brennan M.",tier:"T4",appRank:null,appVal:null,distRank:70,augWins:0,bestFinish:"Debut",histScore:0,formScore:45,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Campbell B.",tier:"T4",appRank:null,appVal:null,distRank:90,augWins:0,bestFinish:"Debut",histScore:0,formScore:40,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Echavarria",tier:"T4",appRank:null,appVal:null,distRank:60,augWins:0,bestFinish:"Debut (T51 '25)",histScore:0,formScore:55,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Fang E. (a)",tier:"T4",appRank:null,appVal:null,distRank:999,augWins:0,bestFinish:"Debut",histScore:0,formScore:28,gate:"fail",flags:["amateur"],liv:false,debut:true,ceremonial:false},
+  {name:"Gerard R.",tier:"T4",appRank:null,appVal:null,distRank:70,augWins:0,bestFinish:"Debut",histScore:0,formScore:50,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Greyserman",tier:"T4",appRank:null,appVal:null,distRank:75,augWins:0,bestFinish:"Debut",histScore:0,formScore:45,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Griffin B.",tier:"T4",appRank:null,appVal:null,distRank:50,augWins:0,bestFinish:"Debut",histScore:0,formScore:55,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Hall H.",tier:"T4",appRank:null,appVal:null,distRank:70,augWins:0,bestFinish:"Debut",histScore:0,formScore:48,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Herrington (a)",tier:"T4",appRank:null,appVal:null,distRank:999,augWins:0,bestFinish:"Debut",histScore:0,formScore:22,gate:"fail",flags:["amateur"],liv:false,debut:true,ceremonial:false},
+  {name:"Holtz B. (a)",tier:"T4",appRank:null,appVal:null,distRank:999,augWins:0,bestFinish:"Debut",histScore:0,formScore:22,gate:"fail",flags:["amateur"],liv:false,debut:true,ceremonial:false},
+  {name:"Howell M. (a)",tier:"T4",appRank:null,appVal:null,distRank:999,augWins:0,bestFinish:"Debut",histScore:0,formScore:28,gate:"fail",flags:["amateur"],liv:false,debut:true,ceremonial:false},
+  {name:"Jarvis C.",tier:"T4",appRank:null,appVal:null,distRank:60,augWins:0,bestFinish:"Debut",histScore:0,formScore:45,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Kataoka",tier:"T4",appRank:null,appVal:null,distRank:110,augWins:0,bestFinish:"Debut",histScore:0,formScore:28,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Keefer J.",tier:"T4",appRank:null,appVal:null,distRank:80,augWins:0,bestFinish:"Debut",histScore:0,formScore:35,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Laopakdee (a)",tier:"T4",appRank:null,appVal:null,distRank:999,augWins:0,bestFinish:"Debut",histScore:0,formScore:18,gate:"fail",flags:["amateur"],liv:false,debut:true,ceremonial:false},
+  {name:"Neergaard-P.",tier:"T4",appRank:null,appVal:null,distRank:65,augWins:0,bestFinish:"Debut",histScore:0,formScore:38,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Novak A.",tier:"T4",appRank:null,appVal:null,distRank:75,augWins:0,bestFinish:"Debut",histScore:0,formScore:42,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Penge M.",tier:"T4",appRank:null,appVal:null,distRank:70,augWins:0,bestFinish:"Debut",histScore:0,formScore:38,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Rai A.",tier:"T4",appRank:null,appVal:null,distRank:60,augWins:0,bestFinish:"Debut",histScore:0,formScore:45,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Reitan K.",tier:"T4",appRank:null,appVal:null,distRank:70,augWins:0,bestFinish:"Debut",histScore:0,formScore:35,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Stevens S.",tier:"T4",appRank:null,appVal:null,distRank:70,augWins:0,bestFinish:"Debut",histScore:0,formScore:38,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+  {name:"Valimaki",tier:"T4",appRank:null,appVal:null,distRank:70,augWins:0,bestFinish:"Debut",histScore:0,formScore:32,gate:"fail",flags:[],liv:false,debut:true,ceremonial:false},
+];
+
+const TIER_C={T1:'#1D9E75',T2:'#378ADD',T3:'#BA7517',T4:'#888780'};
+const PRESETS={balanced:{w1:40,w2:35,w3:25},stats:{w1:70,w2:10,w3:20},history:{w1:20,w2:65,w3:15},form:{w1:25,w2:20,w3:55},pool:{w1:30,w2:45,w3:25}};
+let W={w1:40,w2:35,w3:25};
+let sortCol='score',sortDir=-1;
+let filters={app:{on:false,val:30},t2g:{on:false,val:25},dist:{on:false,val:100},hist:{on:false,val:20}};
+
+function appScore(p){
+  if(p.appRank===null) return p.liv?78:38;
+  if(p.appRank<=3)return 98;if(p.appRank<=7)return 90;if(p.appRank<=14)return 82;
+  if(p.appRank<=20)return 74;if(p.appRank<=30)return 65;if(p.appRank<=50)return 52;
+  if(p.appRank<=100)return 35;return 20;
+}
+function calcScore(p){return Math.round(appScore(p)*(W.w1/100)+p.histScore*(W.w2/100)+p.formScore*(W.w3/100));}
+
+function meetsFilters(p){
+  if(filters.app.on){
+    if(p.appRank===null&&!p.liv) return false;
+    if(p.appRank!==null&&p.appRank>filters.app.val) return false;
+  }
+  if(filters.t2g.on && p.gate==='fail') return false;
+  if(filters.dist.on && p.distRank>filters.dist.val) return false;
+  if(filters.hist.on && p.histScore<filters.hist.val) return false;
+  return true;
+}
+
+function toggleFilter(key){
+  const on=document.getElementById('en-'+key).checked;
+  filters[key].on=on;
+  document.getElementById('wc-'+key).classList.toggle('on',on);
+  updateCounts();render();
+}
+
+function updateSlider(key){
+  filters[key].val=parseInt(document.getElementById('sl-'+key).value);
+  const labels={app:'Top ',t2g:'Top ',dist:'Top ',hist:''};
+  const suffix={app:'',t2g:'',dist:'',hist:'+'};
+  document.getElementById('sv-'+key).textContent=labels[key]+filters[key].val+suffix[key];
+  updateCounts();render();
+}
+
+function updateCounts(){
+  ['app','t2g','dist','hist'].forEach(k=>{
+    const el=document.getElementById('pc-'+k);if(!el)return;
+    let n=0;
+    P.forEach(p=>{
+      if(k==='app'){if(p.appRank!==null&&p.appRank<=filters.app.val||p.liv)n++;}
+      else if(k==='t2g'){if(p.gate!=='fail')n++;}
+      else if(k==='dist'){if(p.distRank<=filters.dist.val)n++;}
+      else if(k==='hist'){if(p.histScore>=filters.hist.val)n++;}
+    });
+    el.innerHTML=`<b>${n}</b> of ${P.length} players clear this bar`;
+  });
+}
+
+function syncW(changed){
+  const ids=[1,2,3],others=ids.filter(i=>i!==changed);
+  const v=parseInt(document.getElementById('w'+changed).value);
+  W['w'+changed]=v;
+  const rem=100-v,sumO=others.reduce((s,i)=>s+W['w'+i],0);
+  if(sumO===0){others.forEach(i=>W['w'+i]=Math.round(rem/2));}
+  else{others.forEach(i=>W['w'+i]=Math.round((W['w'+i]/sumO)*rem));}
+  const diff=100-(W.w1+W.w2+W.w3);W['w'+others[0]]+=diff;
+  ids.forEach(i=>{document.getElementById('w'+i).value=W['w'+i];document.getElementById('w'+i+'-val').textContent=W['w'+i]+'%';});
+  const t=W.w1+W.w2+W.w3;
+  document.getElementById('ttxt').textContent='Total: '+t+'%';
+  document.getElementById('tdot').className='tdot'+(t===100?'':' warn');
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));
+  render();
+}
+
+function setPreset(name,btn){
+  const p=PRESETS[name];W={...p};
+  [1,2,3].forEach(i=>{document.getElementById('w'+i).value=W['w'+i];document.getElementById('w'+i+'-val').textContent=W['w'+i]+'%';});
+  document.getElementById('ttxt').textContent='Total: 100%';
+  document.getElementById('tdot').className='tdot';
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');render();
+}
+
+function setSort(col){
+  if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=-1;}
+  render();
+}
+
+function appCls(r){if(r===null)return'an';if(r<=5)return'ae';if(r<=15)return'ag';if(r<=40)return'am';return'ap';}
+
+function render(){
+  const tierF=document.getElementById('f-tier').value;
+  const livF=document.getElementById('f-liv').value;
+  const showF=document.getElementById('f-flags').checked;
+  const noDebut=document.getElementById('en-debut').checked;
+  const gateReq=document.getElementById('en-gate').checked;
+  const noCerem=document.getElementById('en-cerem').checked;
+
+  // update fcard highlight states
+  document.getElementById('fc-debut').classList.toggle('on',noDebut);
+  document.getElementById('fc-gate').classList.toggle('on',gateReq);
+  document.getElementById('fc-cerem').classList.toggle('on',noCerem);
+
+  let data=P.filter(p=>{
+    if(tierF!=='all'&&p.tier!==tierF) return false;
+    if(livF==='pga'&&p.liv) return false;
+    if(livF==='liv'&&!p.liv) return false;
+    if(noCerem&&p.ceremonial) return false;
+    if(noDebut&&p.debut) return false;
+    if(gateReq&&p.gate==='fail') return false;
+    if(!meetsFilters(p)) return false;
+    return true;
+  }).map(p=>({...p,score:calcScore(p)}));
+
+  data.sort((a,b)=>{
+    let av=a[sortCol],bv=b[sortCol];
+    if(sortCol==='score'){av=a.score;bv=b.score;}
+    if(sortCol==='appRank'){return((a.appRank??999)-(b.appRank??999));}
+    if(typeof av==='string')return av.localeCompare(bv)*sortDir;
+    if(av===null)av=sortDir>0?999:-999;
+    if(bv===null)bv=sortDir>0?999:-999;
+    return(av-bv)*sortDir;
+  });
+
+  document.getElementById('rcount').textContent=data.length+' player'+(data.length!==1?'s':'');
+  const mx=Math.max(...data.map(p=>p.score),1);
+
+  const rows=data.map((p,i)=>{
+    const bw=Math.round((p.score/mx)*43);
+    const bc=p.score>=80?'#1D9E75':p.score>=65?'#378ADD':p.score>=50?'#BA7517':'#888780';
+    const g=p.gate==='pass'?'<span class="gpass">Pass</span>':p.gate==='override'?'<span class="gover">Override</span>':'<span class="gfail">Fail</span>';
+    const aD=p.appRank!=null?'#'+p.appRank:(p.liv?'est.':'N/A');
+    const aV=p.appVal!=null?p.appVal.toFixed(3):'—';
+    const dD=p.distRank<900?'#'+p.distRank:'—';
+    let tags='';
+    if(p.liv)tags+='<span class="tag tliv">LIV</span>';
+    if(p.debut)tags+='<span class="tag tdebut">debut</span>';
+    if(p.flags.includes('amateur'))tags+='<span class="tag tam">amateur</span>';
+    if(showF)p.flags.filter(f=>f!=='LIV est.'&&f!=='amateur').forEach(f=>{tags+=`<span class="tag tflag">${f}</span>`;});
+    return`<tr class="${i<3&&sortCol==='score'?'top3':''}">
+      <td class="rnum${i===0?' gold':''}">${i+1}</td>
+      <td><div class="pcell"><span class="tdot2" style="background:${TIER_C[p.tier]}"></span><span class="pname">${p.name}</span>${tags}</div></td>
+      <td class="r"><span class="tbadge t${p.tier}">${p.tier}</span></td>
+      <td class="r ${appCls(p.appRank)} mono">${aD}</td>
+      <td class="r mono" style="color:var(--muted)">${aV}${p.liv?'<span class="src">est</span>':''}</td>
+      <td class="r mono" style="color:var(--muted)">${dD}</td>
+      <td class="r wins${p.augWins>0?' w':''}">${p.augWins>0?p.augWins:'—'}</td>
+      <td class="bf">${p.bestFinish}</td>
+      <td class="r">${g}</td>
+      <td class="r"><div class="scell"><span class="snum" style="color:${bc}">${p.score}</span><div class="bbg"><div class="bfill" style="width:${bw}px;background:${bc}"></div></div></div></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tbody').innerHTML=rows||`<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--gray);font-family:'DM Mono',monospace;font-size:12px">No players match current filters</td></tr>`;
+  updateCounts();
+}
+
+render();
+</script>
+</body>
+</html>
