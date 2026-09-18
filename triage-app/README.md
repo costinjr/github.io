@@ -43,6 +43,24 @@ page is reachable directly — useful for local development.
 Access is server-only: database credentials are never sent to the browser,
 and every query lives behind the API route or a server action.
 
+`lib/db.ts` turns on TLS for the connection whenever `NODE_ENV=production`
+(Supabase requires it, and `pg` doesn't always infer that from the
+connection string alone), with certificate verification left on. If a
+deployment target's Node runtime can't verify Supabase's certificate chain,
+that will surface as a `self signed certificate` or similar TLS error in
+the server logs — track down the specific CA gap before considering
+`rejectUnauthorized: false`, which removes certificate checking entirely
+and should not be reached for as a default fix.
+
+### Debugging a failed queue load in production
+
+Next.js redacts Server Component error messages in production and shows
+only a generic message plus an `error.digest` (our `/queue` error boundary
+displays the digest). To see what actually failed, check the platform's
+server-side runtime logs (e.g. Vercel: Deployments > your deployment >
+Runtime Logs, or `vercel logs <deployment-url>`) — they carry the full,
+unredacted error and stack trace.
+
 ## Scripts
 
 - `npm run dev` — start the development server
