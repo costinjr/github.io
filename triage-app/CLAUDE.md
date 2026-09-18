@@ -1,0 +1,3 @@
+We are building a synthetic-data-only demo for a fictional specialty clinic (Northstar Specialty Clinic). Never add, request, or store PHI. Do not use or imitate any employer system, prompt, taxonomy, workflow, or data. Work in small vertical slices. Before coding, state the plan and files you will change. Do not add dependencies without explaining why. Do not create features outside the active task. Run typecheck, lint, and tests before declaring a task done. Use server-side environment variables for secrets. Keep the model limited to extraction and suggestions; deterministic TypeScript rules own priority, routing, owner, and SLA. Unknown facts must remain unknown. Every triage output must include evidence quotes and version identifiers.
+
+@AGENTS.md
