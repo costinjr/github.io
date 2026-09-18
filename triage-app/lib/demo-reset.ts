@@ -1,8 +1,5 @@
 import { DEMO_CASES_V1 } from "@/config/demo-cases.v1";
-
-export interface QueryExecutor {
-  query<T = unknown>(text: string, values?: unknown[]): Promise<{ rows: T[] }>;
-}
+import type { QueryExecutor } from "./db";
 
 export async function resetDemoData(db: QueryExecutor): Promise<{ count: number }> {
   await db.query("delete from referrals");
