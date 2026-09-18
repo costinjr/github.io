@@ -45,12 +45,16 @@ and every query lives behind the API route or a server action.
 
 `lib/db.ts` turns on TLS for the connection whenever `NODE_ENV=production`
 (Supabase requires it, and `pg` doesn't always infer that from the
-connection string alone), with certificate verification left on. If a
-deployment target's Node runtime can't verify Supabase's certificate chain,
-that will surface as a `self signed certificate` or similar TLS error in
-the server logs — track down the specific CA gap before considering
-`rejectUnauthorized: false`, which removes certificate checking entirely
-and should not be reached for as a default fix.
+connection string alone), with certificate verification disabled via
+`rejectUnauthorized: false`. This is Supabase's own documented guidance for
+serverless clients: Vercel's Node runtime doesn't ship the CA needed to
+verify Supabase's certificate chain, which otherwise surfaces as `self
+signed certificate in certificate chain`. The tradeoff is real — it removes
+protection against a man-in-the-middle presenting a different certificate —
+so treat it as scoped to this specific, confirmed gap rather than a general
+default. A stronger alternative, if this app ever needs it, is pinning
+Supabase's actual CA certificate via the `ca` option instead of disabling
+verification outright.
 
 ### Debugging a failed queue load in production
 
