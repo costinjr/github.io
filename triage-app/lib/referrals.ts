@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { QueryExecutor } from "./db";
 import { getPool } from "./db";
-import type { Referral } from "./types";
+import type { OwnerRole, Referral, ReferralPriority } from "./types";
 
 type ReferralRow = {
   id: string;
@@ -69,4 +69,50 @@ export async function createReferral(input: NewReferral, db: QueryExecutor = get
     [randomUUID(), input.source, input.rawText],
   );
   return mapRow(rows[0]);
+}
+
+export type TriageResultUpdate = {
+  serviceRequested: string | null;
+  priority: ReferralPriority;
+  ownerRole: OwnerRole;
+  dueAt: string;
+  completeness: "complete" | "incomplete";
+  missingFields: string[];
+  triageRunId: string;
+};
+
+// Applied after a successful extraction + rules pass. Never called for a
+// needs_review outcome — an unresolved run must not overwrite already-known
+// facts, and "unknown" fields must stay unknown rather than being guessed.
+export async function applyTriageResultToReferral(
+  referralId: string,
+  update: TriageResultUpdate,
+  db: QueryExecutor = getPool(),
+): Promise<void> {
+  await db.query(
+    `update referrals
+     set service_requested = $1, priority = $2, owner_role = $3, due_at = $4,
+         completeness = $5, missing_fields = $6, current_triage_run_id = $7
+     where id = $8`,
+    [
+      update.serviceRequested,
+      update.priority,
+      update.ownerRole,
+      update.dueAt,
+      update.completeness,
+      update.missingFields,
+      update.triageRunId,
+      referralId,
+    ],
+  );
+}
+
+// Used for a needs_review outcome: the referral's own facts stay untouched,
+// but the detail page still needs to find the latest (failed) run.
+export async function setCurrentTriageRun(
+  referralId: string,
+  triageRunId: string,
+  db: QueryExecutor = getPool(),
+): Promise<void> {
+  await db.query("update referrals set current_triage_run_id = $1 where id = $2", [triageRunId, referralId]);
 }
