@@ -7,6 +7,11 @@ export default function QueueError({ error, retry }: { error: Error & { digest?:
       <div className="rounded-md border border-red-400/60 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-400/30 dark:bg-red-950/40 dark:text-red-200">
         <p className="font-medium">Couldn&apos;t load the queue.</p>
         <p className="mt-1 text-red-900/80 dark:text-red-200/80">{error.message}</p>
+        {error.digest ? (
+          <p className="mt-2 font-mono text-xs text-red-900/60 dark:text-red-200/60">
+            Error digest: {error.digest} — look this up in the server logs for the full message.
+          </p>
+        ) : null}
       </div>
       <button
         type="button"
