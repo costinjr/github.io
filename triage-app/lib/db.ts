@@ -1,5 +1,11 @@
 import { Pool } from "pg";
 
+// The subset of pg.Pool's interface the app's query functions rely on, so
+// tests can inject a pg-mem-backed implementation instead of a real Pool.
+export interface QueryExecutor {
+  query<T = unknown>(text: string, values?: unknown[]): Promise<{ rows: T[] }>;
+}
+
 let pool: Pool | undefined;
 
 export function getPool(): Pool {

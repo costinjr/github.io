@@ -29,3 +29,31 @@ export type Referral = {
   currentTriageRunId: string | null;
   isSynthetic: boolean;
 };
+
+export const WORKFLOW_EVENT_TYPES = ["status_change", "note"] as const;
+export type WorkflowEventType = (typeof WORKFLOW_EVENT_TYPES)[number];
+
+export type WorkflowEvent = {
+  id: string;
+  referralId: string;
+  createdAt: string;
+  eventType: WorkflowEventType;
+  fromValue: string | null;
+  toValue: string | null;
+  note: string | null;
+};
+
+export type TriageRun = {
+  id: string;
+  referralId: string;
+  createdAt: string;
+  model: string | null;
+  promptVersion: string | null;
+  rulesVersion: string | null;
+  extractedJson: unknown;
+  evidenceJson: unknown;
+  confidence: number | null;
+  ruleHits: unknown;
+  finalPriority: string | null;
+  finalRoute: string | null;
+};

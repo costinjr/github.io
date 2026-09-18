@@ -1,21 +1,8 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { newDb } from "pg-mem";
 import { beforeEach, describe, expect, it } from "vitest";
 import { DEMO_CASES_V1 } from "@/config/demo-cases.v1";
-import { resetDemoData, type QueryExecutor } from "./demo-reset";
-
-const migrationSql = readFileSync(
-  join(__dirname, "..", "supabase", "migrations", "0001_init.sql"),
-  "utf-8",
-);
-
-function createTestDb(): QueryExecutor {
-  const db = newDb();
-  db.public.none(migrationSql);
-  const { Pool } = db.adapters.createPg();
-  return new Pool();
-}
+import type { QueryExecutor } from "./db";
+import { resetDemoData } from "./demo-reset";
+import { createTestDb } from "./test-support/pg-mem-db";
 
 describe("resetDemoData", () => {
   let db: QueryExecutor;
