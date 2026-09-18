@@ -1,14 +1,5 @@
 import { z } from "zod";
-
-export const KNOWN_SERVICES = [
-  "Cardiology",
-  "Dermatology",
-  "Endocrinology",
-  "Gastroenterology",
-  "Neurology",
-  "Orthopedics",
-  "Pulmonology",
-] as const;
+import { SERVICES } from "@/config/clinic.v1";
 
 // The subset of fields an evidence quote can back — the "conclusions" that
 // need a pinpoint citation, as opposed to derived characterizations like
@@ -26,7 +17,7 @@ export const EvidenceQuoteSchema = z.object({
 });
 
 export const ExtractionResultSchema = z.object({
-  requested_service: z.enum(KNOWN_SERVICES).nullable(),
+  requested_service: z.enum(SERVICES).nullable(),
   urgency_label_from_source: z.string().nullable(),
   urgency_clues: z.array(z.string()),
   completeness: z.enum(["complete", "incomplete"]),

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { QueryExecutor } from "./db";
 import { getPool } from "./db";
 import type { TriageRun } from "./types";
@@ -34,12 +35,52 @@ function mapRow(row: TriageRunRow): TriageRun {
   };
 }
 
-// Always empty until a later session adds AI extraction and rules, but the
-// referral detail page needs a real (if currently empty) history to render.
 export async function listTriageRuns(referralId: string, db: QueryExecutor = getPool()): Promise<TriageRun[]> {
   const { rows } = await db.query<TriageRunRow>(
     "select * from triage_runs where referral_id = $1 order by created_at desc",
     [referralId],
   );
   return rows.map(mapRow);
+}
+
+export type NewTriageRun = {
+  referralId: string;
+  model: string | null;
+  promptVersion: string | null;
+  rulesVersion: string | null;
+  extractedJson: unknown;
+  evidenceJson: unknown;
+  confidence: number | null;
+  ruleHits: string[] | null;
+  finalPriority: string | null;
+  finalRoute: string | null;
+};
+
+// Immutable: a triage run is only ever inserted, never updated. Re-running
+// triage creates a new row rather than overwriting this one.
+export async function createTriageRun(input: NewTriageRun, db: QueryExecutor = getPool()): Promise<TriageRun> {
+  const { rows } = await db.query<TriageRunRow>(
+    `insert into triage_runs
+       (id, referral_id, model, prompt_version, rules_version, extracted_json, evidence_json, confidence, rule_hits, final_priority, final_route)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     returning *`,
+    [
+      randomUUID(),
+      input.referralId,
+      input.model,
+      input.promptVersion,
+      input.rulesVersion,
+      // jsonb columns: pg does not auto-serialize JS objects/arrays — verified
+      // empirically against real Postgres (a raw array/object here produces a
+      // malformed value pg's own array serializer mangles before Postgres
+      // even sees it as JSON).
+      input.extractedJson === null ? null : JSON.stringify(input.extractedJson),
+      input.evidenceJson === null ? null : JSON.stringify(input.evidenceJson),
+      input.confidence,
+      input.ruleHits === null ? null : JSON.stringify(input.ruleHits),
+      input.finalPriority,
+      input.finalRoute,
+    ],
+  );
+  return mapRow(rows[0]);
 }

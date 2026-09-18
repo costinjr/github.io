@@ -1,13 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Referral } from "@/lib/types";
-
-const rawText = "STAT - Dr. Elena Park requesting same-day review. Facial swelling after recent procedure.";
+import type { TriagePipelineOutcome } from "@/lib/triage";
 
 function makeReferral(overrides: Partial<Referral> = {}): Referral {
   return {
     id: "NR-001",
     source: "paste",
-    rawText,
+    rawText: "STAT - same-day review needed.",
     receivedAt: "2026-01-01T00:00:00.000Z",
     serviceRequested: null,
     status: "New",
@@ -22,58 +21,43 @@ function makeReferral(overrides: Partial<Referral> = {}): Referral {
   };
 }
 
-const validParsedOutput = {
-  requested_service: null,
-  urgency_label_from_source: "STAT",
-  urgency_clues: ["same-day review"],
-  completeness: "incomplete",
-  missing_fields: ["patient_contact"],
-  referring_clinician: "Dr. Elena Park",
-  patient_contact_present: false,
-  summary: "Same-day review requested after a recent procedure.",
-  confidence: 0.92,
-  evidence_quotes: [
-    { field: "urgency_label_from_source", quote: "STAT" },
-    { field: "referring_clinician", quote: "Dr. Elena Park" },
-  ],
-  contradictions: [],
-  suggested_route: null,
-};
-
 vi.mock("@/lib/referrals", () => ({
   getReferralById: vi.fn(),
 }));
 
-vi.mock("@/lib/anthropic-client", () => ({
-  getAnthropicClient: vi.fn(),
+vi.mock("@/lib/triage", () => ({
+  runTriagePipeline: vi.fn(),
 }));
 
 describe("POST /api/referrals/[id]/triage", () => {
-  it("returns a valid extraction record with evidence for a real referral", async () => {
+  it("runs the pipeline for a real referral and returns its outcome", async () => {
     const { getReferralById } = await import("@/lib/referrals");
-    const { getAnthropicClient } = await import("@/lib/anthropic-client");
-    vi.mocked(getReferralById).mockResolvedValue(makeReferral());
-    vi.mocked(getAnthropicClient).mockReturnValue({
-      messages: { parse: vi.fn().mockResolvedValue({ parsed_output: validParsedOutput }) },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    const { runTriagePipeline } = await import("@/lib/triage");
+    const referral = makeReferral();
+    const pipelineOutcome: TriagePipelineOutcome = {
+      status: "ok",
+      triageRunId: "run-1",
+      priority: "Critical",
+      ruleHits: ['Critical: "STAT" matches an emergency escalation phrase.'],
+    };
+    vi.mocked(getReferralById).mockResolvedValue(referral);
+    vi.mocked(runTriagePipeline).mockResolvedValue(pipelineOutcome);
 
     const { POST } = await import("./route");
     const response = await POST(new Request("http://localhost/api/referrals/NR-001/triage", { method: "POST" }), {
       params: Promise.resolve({ id: "NR-001" }),
     });
 
+    expect(runTriagePipeline).toHaveBeenCalledWith(referral);
     expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.status).toBe("ok");
-    expect(body.result.evidence_quotes.length).toBeGreaterThan(0);
-    expect(body.model).toBe("claude-opus-5");
-    expect(body.promptVersion).toBe("v1");
+    expect(await response.json()).toEqual(pipelineOutcome);
   });
 
-  it("returns 404 when the referral doesn't exist", async () => {
+  it("returns 404 without running the pipeline when the referral doesn't exist", async () => {
     const { getReferralById } = await import("@/lib/referrals");
+    const { runTriagePipeline } = await import("@/lib/triage");
     vi.mocked(getReferralById).mockResolvedValue(null);
+    vi.mocked(runTriagePipeline).mockClear();
 
     const { POST } = await import("./route");
     const response = await POST(new Request("http://localhost/api/referrals/missing/triage", { method: "POST" }), {
@@ -81,24 +65,6 @@ describe("POST /api/referrals/[id]/triage", () => {
     });
 
     expect(response.status).toBe(404);
-  });
-
-  it("returns needs_review when the model never produces verifiable evidence", async () => {
-    const { getReferralById } = await import("@/lib/referrals");
-    const { getAnthropicClient } = await import("@/lib/anthropic-client");
-    vi.mocked(getReferralById).mockResolvedValue(makeReferral());
-    vi.mocked(getAnthropicClient).mockReturnValue({
-      messages: { parse: vi.fn().mockResolvedValue({ parsed_output: null }) },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
-
-    const { POST } = await import("./route");
-    const response = await POST(new Request("http://localhost/api/referrals/NR-001/triage", { method: "POST" }), {
-      params: Promise.resolve({ id: "NR-001" }),
-    });
-
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.status).toBe("needs_review");
+    expect(runTriagePipeline).not.toHaveBeenCalled();
   });
 });

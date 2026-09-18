@@ -70,6 +70,11 @@ export default async function QueuePage({
               <h2 className="text-lg font-semibold">
                 {band} <span className="text-sm font-normal text-foreground/50">({groups[band].length})</span>
               </h2>
+              {band === "Critical" && groups[band].length > 0 ? (
+                <p className="text-xs font-medium text-red-700 dark:text-red-400">
+                  This tool does not replace emergency services.
+                </p>
+              ) : null}
               {groups[band].length === 0 ? (
                 <p className="text-sm text-foreground/50">No referrals in this band.</p>
               ) : (

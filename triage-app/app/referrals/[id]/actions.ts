@@ -1,7 +1,9 @@
 "use server";
 
+import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getReferralById } from "@/lib/referrals";
+import { runTriagePipeline } from "@/lib/triage";
 import { REFERRAL_STATUSES } from "@/lib/types";
 import type { ReferralStatus } from "@/lib/types";
 import { addWorkflowNote, changeReferralStatus } from "@/lib/workflow";
@@ -48,4 +50,18 @@ export async function addNoteAction(prevState: DetailFormState, formData: FormDa
   await addWorkflowNote(referralId, note);
   revalidatePath(`/referrals/${referralId}`);
   return null;
+}
+
+// Always creates a new triage_runs row rather than overwriting the last
+// one — this same action backs both "Run Triage" and "Re-run Triage".
+export async function triageAction(formData: FormData): Promise<void> {
+  const referralId = String(formData.get("referralId") ?? "");
+
+  const referral = await getReferralById(referralId);
+  if (!referral) {
+    notFound();
+  }
+
+  await runTriagePipeline(referral);
+  redirect(`/referrals/${referralId}`);
 }

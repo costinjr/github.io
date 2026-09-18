@@ -6,11 +6,11 @@ the tool extracts the facts, checks completeness, and applies written triage
 rules to assign priority, owner, and due time. See `CLAUDE.md` for the
 project guardrails.
 
-This covers Sessions 1–5 of the build: the app shell, navigation, a demo
+This covers Sessions 1–6 of the build: the app shell, navigation, a demo
 passcode gate, the Supabase Postgres schema with a synthetic seed/reset,
-intake and referral detail views, and an AI extraction contract. The rules
-engine that turns extraction into priority, owner, and due time is added in
-a later session.
+intake and referral detail views, an AI extraction contract, and the
+deterministic rules engine that turns extraction into priority, owner, and
+due time.
 
 ## Local setup
 
@@ -63,20 +63,16 @@ verification outright.
 1. Get an API key from [console.anthropic.com](https://console.anthropic.com)
    and set `ANTHROPIC_API_KEY` in `.env.local`. Set a low spend limit on the
    account during the demo phase — the API is metered.
-2. `POST /api/referrals/:id/triage` runs extraction on that referral's raw
-   text and returns the result. It only extracts and suggests — it does not
-   assign priority, owner, or due time (that's written clinic rules, added
-   in a later session) and it does not yet save anything to the database.
-3. The model may only conclude `requested_service`,
+2. The model may only conclude `requested_service`,
    `urgency_label_from_source`, `referring_clinician`, or `suggested_route`
    when it can back that conclusion with a quote copied verbatim from the
    referral text (`lib/extraction/validate.ts` checks this against the
    actual raw text, not just the response's shape). If the response fails
    that check, or isn't valid against the schema at all
    (`lib/extraction/schema.ts`), it retries once; if the retry also fails,
-   the endpoint returns `{ status: "needs_review", reason: "..." }` instead
-   of a fabricated result.
-4. The prompt lives in `config/triage-prompt.v1.md` — edit behavior there,
+   the run is saved with no priority and the referral is left exactly as it
+   was — see "Deterministic triage rules" below.
+3. The prompt lives in `config/triage-prompt.v1.md` — edit behavior there,
    not in code, and bump the filename (and `TRIAGE_PROMPT_VERSION` in
    `lib/extraction/prompt.ts`) on any real change so old triage runs stay
    attributable to the prompt version that actually produced them.
@@ -86,6 +82,41 @@ takes an injectable `ModelCaller`, so the retry logic and evidence
 validation are tested without any network call or API cost. Real calls to
 Anthropic still require your own `ANTHROPIC_API_KEY` and are not exercised
 by the test suite.
+
+### Deterministic triage rules
+
+`config/clinic.v1.ts` holds Northstar's clinic-specific facts (known
+services, required fields, emergency escalation phrases, confidence
+threshold, operating hours). `config/triage-rules.v1.ts` holds the actual
+rules engine — a pure function, `applyTriageRules`, that takes a validated
+extraction plus the referral's received time and returns priority, owner
+role, due time, and the rule hit(s) that produced them. The model never
+sees or sets any of these; it only extracts and suggests.
+
+Precedence when more than one rule matches, per the spec: Critical → Today
+→ Manual Review → Needs Information → This Week. Every category that
+matched is recorded in `rule_hits`, not just the winner, so the detail page
+can show *why* a lower-priority signal didn't win.
+
+`lib/triage.ts` (`runTriagePipeline`) wires extraction and rules together
+and is the single thing both `POST /api/referrals/:id/triage` and the
+referral detail page's "Run Triage" / "Re-run Triage" button call — each
+call inserts a new, immutable `triage_runs` row rather than overwriting the
+last one. On a successful run, the referral's own `service_requested`,
+`priority`, `owner_role`, `due_at`, `completeness`, and `missing_fields`
+are updated from it. On a `needs_review` outcome, the referral is left
+completely untouched (unknown stays unknown) — only the run itself is
+saved, so the failed attempt is still visible in the history.
+
+Business-day math (`config/triage-rules.v1.ts`) is a deliberate
+simplification for the demo: fixed Monday–Friday, fixed UTC business
+hours, no holiday calendar.
+
+Every rule, the full precedence chain, low-confidence handling, missing
+fields, and conflicting cues are covered in
+`config/triage-rules.v1.test.ts`. `lib/triage.test.ts` includes the
+session's own acceptance test: pasting the STAT example lands it in
+Critical with exact evidence and a visible rule hit.
 
 ### Debugging a failed queue load in production
 
