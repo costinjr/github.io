@@ -75,6 +75,40 @@ Two steps, same as your own admin setup:
 
 ## Decisions and accounts still needed for later phases
 
-Nothing yet — this section fills in as I hit something in Phase 6–9
-that needs your input rather than a guess. Check back here after each
-phase.
+### Phase 6 (done) — one open design question, not a blocker
+
+Section 6's scoring table gives "occasion and gift fit" a 10-point line,
+but nothing in `inventory_items` captures how gift-appropriate a piece
+is — there's no occasion-shaped column to score against. I didn't
+invent a mapping (e.g. guessing that "closing gift" should favor a
+particular size or vessel style). The matcher scores this dimension as
+always 0 for now, documented in `src/lib/matching/score.ts`. The
+`featured` flag (admin toggle, +5 points) is the closest existing lever
+for "this piece reads well as a gift" today.
+
+Not urgent — nothing is broken, the matcher just doesn't score this one
+dimension. Worth a decision from you or Libby eventually: either pick a
+concrete signal (e.g. a `gift_worthy` flag, or map specific vessel
+styles/sizes to specific occasions) or leave it as-is.
+
+### Phase 7 (AI wrapper) — needs an API key
+
+The free-text parser and AI-generated match explanation need a real AI
+provider. I'll build the adapter, validation, rate limiting, and cost
+cap against a generic interface, with one concrete implementation
+(Anthropic's API, since that's the natural default and Claude Code
+itself runs on it) — but nothing will actually call out to it without
+an API key. If you want live AI parsing/blurbs rather than the
+deterministic-only fallback (which is itself a required, working spec
+behavior, not a broken state), get an API key from console.anthropic.com
+and add it as `ANTHROPIC_API_KEY` (exact name to be confirmed once I
+write that code) in Vercel's environment variables.
+
+### Phase 8 (online claim and payment) — needs a decision + an account
+
+Section 9 requires a "hosted-payment provider adapter" but never names
+one. This is your call, not mine to guess: Stripe is the overwhelmingly
+standard choice for a Next.js app like this, but I won't build against
+it without you confirming that's what you want, and either way it
+needs a real account and API keys before anything can actually process
+a payment. I'll note the specifics here once I get to this phase.

@@ -4,7 +4,9 @@ One-of-one plant shop website. Next.js (App Router) + TypeScript + Tailwind CSS 
 
 Build spec: section-by-section product and build specification, implemented one numbered section at a time per its build sequence (`§17`).
 
-## Status: Phase 5 — Core pages
+## Status: Phase 6 — Deterministic matching
+
+Live Supabase project: connected as of this phase — see `HANDOFF.md` for deploy steps and admin access. Schema, storage, and admin_users are already applied there.
 
 Phase 1 — Foundation:
 
@@ -68,6 +70,20 @@ Phase 5 — Core pages:
 
 **A real gap caught before it shipped, not after:** the landing page hero was originally written to reference `/hero-brass-tumbler-teapot.jpg` — the exact photo section 2 describes — but that file was never actually supplied to this build. Rather than ship a broken image reference, the hero renders a palette-only placeholder with a comment marking exactly where the real photo goes and how to wire it in (`next/image`, `fill`, `object-cover`). This is a genuine missing asset, not a PENDING decision — someone needs to supply the actual photo file.
 
+Phase 6 — Deterministic matching (`src/lib/matching/`):
+
+- `MatchPreferences` — section 6's preference-object table as a type, deliberately independent of how it gets populated (Phase 7's AI parser, a filter form, or a test fixture all produce the same shape)
+- Hard filters split into two tiers, matching a real nuance in the spec: pet safety and an explicit budget are non-negotiable under any circumstance (`filters.ts`); a light mismatch is a softer hard filter that's allowed to fall back to a named "closest safe option" when it's the *only* thing blocking every candidate
+- Scoring weights live in one config module (`config.ts`) — light 35, care+watering 25 (split evenly, each fading by ordinal distance so "asked for easy, got moderate" beats "asked for easy, got involved"), size 15, vessel style 10, occasion 10, featured 5, summing to exactly 100
+- One documented, deliberate gap: "occasion and gift fit" has no inventory field to score against, so it always contributes 0 rather than a guessed mapping — see `HANDOFF.md`
+- Confidence (strong/good/limited) is an achieved-vs-possible ratio computed only over dimensions the visitor actually specified, capped at "limited" when almost nothing was specified — never an invented percentage
+- Deterministic explanation templates (`templates.ts`) reuse the exact spec copy for "no inventory," and build match explanations only from the item's own stored fields — these aren't just Phase 6's own copy, they're the literal fallback Phase 7 will use whenever the AI wrapper is unavailable or fails validation
+- 37 unit tests (`npm run test`, via a new Vitest setup) proving the acceptance-criteria claims directly: a low-light request never returns a high-light-only item, pet safety is never relaxed even in a fallback, a budget is never exceeded, alternates never duplicate the selection, weights sum to 100
+
+**A real bug the tests caught immediately:** the deterministic match explanation's headline could exceed the 70-character limit section 6's AI output contract sets — a test asserting that limit failed on the first run against a long display name. Fixed with a template that falls back to a shorter phrasing, then to a truncated one, before exceeding the limit. This matters beyond Phase 6: Phase 7 reuses this exact template as its AI-unavailable fallback, so the bug would otherwise have shipped there too.
+
+Not wired into the landing page yet — the matchmaker teaser still emails Libby directly, since it needs Phase 7's free-text parser to turn a visitor's sentence into a `MatchPreferences` object before this engine has anything to run on.
+
 ## Development
 
 ```bash
@@ -83,3 +99,4 @@ Open [http://localhost:3000](http://localhost:3000).
 - `npm run dev` — start the dev server
 - `npm run build` — production build
 - `npm run lint` — ESLint
+- `npm run test` — unit tests (Vitest)
