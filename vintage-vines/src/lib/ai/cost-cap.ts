@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import type { AiEndpoint } from "@/types/database";
+import { logError } from "@/lib/log-error";
 import { withTimeout } from "./with-timeout";
 
 const TIMEOUT_MS = 3000;
@@ -36,7 +37,7 @@ export async function isUnderMonthlySpendCap(): Promise<boolean> {
     const spent = (data ?? []).reduce((sum, row) => sum + row.estimated_cost_cents, 0);
     return spent < env.AI_MONTHLY_SPEND_CAP_CENTS;
   } catch (error) {
-    console.error("[cost-cap] check failed, failing closed (AI disabled this request):", error);
+    logError("cost-cap check failed, failing closed (AI disabled this request)", error);
     return false;
   }
 }
@@ -52,6 +53,6 @@ export async function recordAiUsage(endpoint: AiEndpoint, costCents: number): Pr
     );
     if (error) throw error;
   } catch (error) {
-    console.error("[cost-cap] failed to record AI usage:", error);
+    logError("cost-cap failed to record AI usage", error);
   }
 }

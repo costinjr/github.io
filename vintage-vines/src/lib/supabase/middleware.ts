@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
+import { logError } from "@/lib/log-error";
 
 /**
  * Refreshes the Supabase auth cookie on every proxied request and reports
@@ -45,7 +46,7 @@ export async function updateSession(request: NextRequest) {
     // an Auth outage here must not take down the whole site. Treat it
     // as signed out; requireAdmin() will send a real admin to sign in
     // again, which is a much smaller problem than every route 500ing.
-    console.error("[proxy] session check failed, treating as signed out:", error);
+    logError("proxy session check failed, treating as signed out", error);
     return { response, user: null };
   }
 }

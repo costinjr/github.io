@@ -1,5 +1,6 @@
 import "server-only";
 import { createPublicClient } from "@/lib/supabase/server";
+import { logError } from "@/lib/log-error";
 import type { InventoryImageRow, InventoryItemRow } from "@/types/database";
 
 export interface InventoryItemWithImages extends InventoryItemRow {
@@ -14,7 +15,7 @@ export interface InventoryItemWithImages extends InventoryItemRow {
  * log for anyone watching it.
  */
 function logInventoryError(context: string, error: unknown) {
-  console.error(`[inventory] ${context} failed, falling back to empty:`, error);
+  logError(`inventory ${context} failed, falling back to empty`, error);
 }
 
 /**

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { business } from "@/config/business";
 import { siteCopy } from "@/config/site-copy";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 
 export const metadata: Metadata = {
   title: "For Shops",
@@ -30,12 +31,13 @@ export default function ShopsPage() {
       </div>
 
       <div className="mt-10">
-        <a
+        <TrackedLink
+          event="shop_inquiry"
           href={mailHref}
           className="inline-flex min-h-11 items-center rounded-sm bg-green px-6 text-sm font-medium text-cream"
         >
           {copy.ctaLabel}
-        </a>
+        </TrackedLink>
         <p className="mt-2 text-xs text-ink-soft">
           Opens an email to {business.contact.email} — or call {business.contact.phone}.
         </p>

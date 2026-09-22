@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { after } from "next/server";
 import { business } from "@/config/business";
+import { logEvent } from "@/lib/analytics/log-event";
 import { env } from "@/lib/env";
 import { getInventoryItemBySlug } from "@/lib/inventory";
 import { formatPriceCents } from "@/lib/format";
@@ -7,6 +9,7 @@ import { careDifficultyLabels, lightLevelLabels, petSafetyLabels, wateringLabels
 import { photoUrl } from "@/lib/storage-url";
 import { PhotoGallery } from "@/components/inventory/photo-gallery";
 import { PieceUnavailable } from "@/components/inventory/piece-unavailable";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +37,8 @@ export default async function ItemDetailPage({
   const item = await getInventoryItemBySlug(slug);
 
   if (!item) return <PieceUnavailable />;
+
+  after(() => logEvent("item_viewed", { inventoryItemId: item.id, path: `/purchase/${slug}` }));
 
   const sizeLabel = business.oneOfOnePricing.find((tier) => tier.sizeClass === item.size_class)?.label;
   const photos = [...item.inventory_images]
@@ -91,14 +96,15 @@ export default async function ItemDetailPage({
             <p className="text-xs text-ink-soft">
               Online claiming opens soon — message Libby to reserve this piece in the meantime.
             </p>
-            <a
+            <TrackedLink
+              event="contact_click"
               href={`mailto:${business.contact.email}?subject=${encodeURIComponent(
                 `Question about ${item.display_name}`,
               )}`}
               className="min-h-11 rounded-sm border border-line px-4 py-2 text-center text-sm font-medium text-ink"
             >
               Ask Libby a question
-            </a>
+            </TrackedLink>
           </div>
 
           <dl className="mt-8 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">

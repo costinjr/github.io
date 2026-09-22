@@ -1,4 +1,5 @@
 import { business } from "@/config/business";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
@@ -17,24 +18,33 @@ export function SiteFooter() {
             {business.location.pickupArea}
           </p>
           <p className="mt-2">
-            <a href={`mailto:${business.contact.email}`} className="hover:text-green">
+            <TrackedLink
+              event="contact_click"
+              href={`mailto:${business.contact.email}`}
+              className="inline-block py-1.5 hover:text-green"
+            >
               {business.contact.email}
-            </a>
+            </TrackedLink>
           </p>
-          <p>
-            <a href={business.contact.phoneHref} className="hover:text-green">
+          <p className="mt-1">
+            <TrackedLink
+              event="contact_click"
+              href={business.contact.phoneHref}
+              className="inline-block py-1.5 hover:text-green"
+            >
               {business.contact.phone}
-            </a>
+            </TrackedLink>
           </p>
-          <p className="mt-2">
-            <a
+          <p className="mt-1">
+            <TrackedLink
+              event="instagram_click"
               href={business.contact.instagramUrl}
               target="_blank"
               rel="noreferrer"
-              className="hover:text-green"
+              className="inline-block py-1.5 hover:text-green"
             >
               {business.contact.instagramHandle}
-            </a>
+            </TrackedLink>
           </p>
         </div>
       </div>

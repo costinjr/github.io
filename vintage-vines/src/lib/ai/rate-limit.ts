@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log-error";
 import { withTimeout } from "./with-timeout";
 
 const WINDOW_MINUTES = 10;
@@ -56,7 +57,7 @@ export async function checkAndRecordRateLimit(
 
     return { allowed: true };
   } catch (error) {
-    console.error("[rate-limit] check failed, failing open:", error);
+    logError("rate-limit check failed, failing open", error);
     return { allowed: true };
   }
 }

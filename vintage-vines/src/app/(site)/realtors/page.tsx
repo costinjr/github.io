@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { business } from "@/config/business";
 import { siteCopy } from "@/config/site-copy";
 import { formatPriceCents } from "@/lib/format";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 
 export const metadata: Metadata = {
   title: "For Realtors",
@@ -62,12 +63,13 @@ export default function RealtorsPage() {
       </div>
 
       <div className="mt-10 text-center">
-        <a
+        <TrackedLink
+          event="realtor_inquiry"
           href={mailHref}
           className="inline-flex min-h-11 items-center rounded-sm bg-green px-6 text-sm font-medium text-cream"
         >
           {copy.ctaLabel}
-        </a>
+        </TrackedLink>
         <p className="mt-2 text-xs text-ink-soft">
           Opens an email to {business.contact.email} — or call {business.contact.phone}.
         </p>

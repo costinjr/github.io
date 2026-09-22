@@ -121,6 +121,53 @@ limiting protects the deterministic-only matchmaker endpoint too.
 
 ---
 
+## 4. Run the analytics table migration
+
+- [ ] Done
+
+Phase 9 added first-party, privacy-minded analytics (section 15) — no
+third-party tracker, nothing that stores what a visitor typed. Same as
+before: **SQL Editor → New query**, paste, run.
+
+```sql
+-- Privacy-minded, first-party analytics (section 15). No third-party
+-- tracker, no free-text visitor input ever stored here — just named
+-- events, optionally tagged with an inventory id and a small result
+-- state. Server-only: RLS enabled with zero policies, same pattern as
+-- ai_requests/ai_usage_log.
+
+create table analytics_events (
+  id uuid primary key default gen_random_uuid(),
+  event_type text not null check (event_type in (
+    'page_view',
+    'matchmaker_started',
+    'match_returned',
+    'no_match',
+    'item_viewed',
+    'claim_started',
+    'claim_completed',
+    'realtor_inquiry',
+    'shop_inquiry',
+    'contact_click',
+    'instagram_click'
+  )),
+  inventory_item_id uuid references inventory_items (id) on delete set null,
+  path text,
+  result_state text,
+  created_at timestamptz not null default now()
+);
+
+create index analytics_events_event_type_created_at_idx on analytics_events (event_type, created_at);
+
+alter table analytics_events enable row level security;
+```
+
+Nothing breaks without this — every call site catches its own insert
+error and logs it rather than failing the feature it's measuring — but
+you won't see any events recorded until it's run.
+
+---
+
 ## Decisions and accounts still needed for later phases
 
 ### Phase 6 (done) — one open design question, not a blocker
@@ -221,3 +268,93 @@ into real payment.
    honest interim answer is a manual one: collect the delivery address
    and let Libby confirm the fee herself, rather than pretending to
    auto-calculate a distance with no way to actually measure it.
+
+### Phase 9 (done) — accessibility, analytics, metadata, and error logging
+
+**Accessibility:** ran a real automated WCAG 2.2 AA audit (axe-core
+against the actual rendered pages, not a lint rule) and fixed two real
+findings: `--color-brass` and `--color-terracotta` were both below the
+4.5:1 text-contrast minimum in several places (eyebrow text, error
+copy) — darkened both, verified the new values pass 4.5:1 by computing
+relative luminance directly, then re-ran axe to confirm zero
+violations. Also fixed a touch-target-size violation on the footer's
+phone link. No account or decision needed here — this was pure code.
+
+**Analytics:** first-party, privacy-minded event logging per section
+15 — see Step 4 above for the migration. Tracks page views, matchmaker
+starts/matches/no-matches, item views, claim starts, realtor/shop
+inquiries, and contact/Instagram clicks. Nothing third-party, nothing
+that stores what a visitor typed.
+
+**Metadata and social cards:** sitemap, robots.txt, a palette-only
+Open Graph card (no brand photograph was ever supplied — see the
+landing-page hero note), and LocalBusiness structured data using only
+verified facts (name, tagline, email, phone, city/state, Instagram).
+Deliberately left out: street address (never publish one, per section
+9), opening hours, and price range — none of those are confirmed.
+
+**Error monitoring:** no third-party error-monitoring account was ever
+named or supplied, so rather than guess one (Sentry, etc.) I built a
+single `logError()` helper (`src/lib/log-error.ts`) that every server
+error now flows through, so your Vercel function logs are consistent
+and searchable today. If you want real alerting later, adding Sentry
+(or similar) becomes a one-file change — swap the body of `logError()`
+to also call it, no call sites need to change. Not a blocker for
+launch; just means you'd be watching Vercel's own logs at first rather
+than getting pinged.
+
+---
+
+## 5. Launch checklist (section 19 of the spec)
+
+Mirrored here so you can work through it directly. Items I can't
+verify myself (content decisions, real photos, live payment) are
+marked; everything else is either done or ready for you to test once
+deployed.
+
+- [ ] Replace placeholder copy only with Libby-approved facts.
+- [ ] Load the approved cream arched logo and brass tumbler + cottage
+  teapot hero photo; check crops on narrow and wide screens. *(No
+  photo file was ever supplied to this build — the hero and the
+  Open Graph card are both palette-only placeholders until you add
+  it.)*
+- [ ] Confirm phone, email, Instagram, Columbus, and Upper Arlington
+  wording is accurate (`src/config/business.ts` is the one place to
+  edit any of it).
+- [x] Verify the inventory database is empty in production — yes, no
+  sample/seed data was ever inserted (per your instruction).
+- [ ] Verify the empty state looks polished — it's built and styled
+  (`/purchase`, `/inventory`); worth a look once deployed.
+- [x] Admin access exists for `costin.jon@gmail.com`; **[ ]** add
+  `vintagevinesohio@gmail.com` via Step 2 above and test passwordless
+  sign-in for both.
+- [ ] Add one private draft, preview it, publish it, run a match,
+  claim it in test mode, mark it sold, and confirm it disappears.
+  *(The claim step is only a hold today — see Phase 8 above; "test
+  mode" claim/pay can't be tested until a payment provider is wired
+  up.)*
+- [ ] Test final realtor terms ($30 each, $25 each at five or more,
+  Ohio sales tax included, 3–5 day lead time, hand-delivered locally
+  or Upper Arlington pickup) — copy is live at `/realtors`, worth a
+  read-through for accuracy.
+- [ ] Test the shop inquiry path and flexible-terms wording at `/shops`.
+- [ ] Source care copy from Libby's Plant Care Guide and review it
+  before publish. **Do not label anything pet-safe** until Libby
+  supplies per-plant pet-safety data — the admin item form has no
+  pet-safety field prefilled or defaulted; it has to be entered
+  per-item, deliberately, by whoever knows the answer.
+- [ ] Confirm privacy, terms, fulfillment, returns, and contact pages
+  or notices required for the chosen claim mode. *(None of these
+  exist yet — they depend on the payment-provider decision in Phase 8
+  above, since the required notices differ by provider.)*
+- [ ] Connect the production domain (Vercel → Domains).
+- [ ] Analytics — done, see Step 4 above; nothing further needed
+  unless you also want a third-party tool.
+- [ ] Error monitoring — see the Phase 9 note above; optional upgrade
+  from today's Vercel-log-based approach.
+- [ ] Transactional email — not yet needed by anything built (no
+  payment flow exists to email a receipt from yet); revisit once
+  Phase 8's payment provider is chosen.
+- [ ] Backups — Supabase Pro plans include automatic backups; confirm
+  your plan/tier covers this, since it's a Supabase account setting,
+  not application code.

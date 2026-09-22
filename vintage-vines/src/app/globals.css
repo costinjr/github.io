@@ -8,8 +8,11 @@
   --color-ink-soft: #4a4638;
   --color-green: #2f4a34;
   --color-green-dark: #23372a;
-  --color-terracotta: #b15e3d;
-  --color-brass: #a9873f;
+  /* Both darkened from the original palette pass to clear WCAG AA
+     4.5:1 for normal text against every cream-family background —
+     verified with axe-core, not eyeballed. See README's Phase 9 notes. */
+  --color-terracotta: #954725;
+  --color-brass: #7a5f28;
   --color-line: #ded0b4;
 
   --radius-sm: 4px;

@@ -118,6 +118,31 @@ export type AiUsageLogRow = {
 export type AiUsageLogInsert = Omit<AiUsageLogRow, "id" | "created_at"> &
   Partial<Pick<AiUsageLogRow, "id">>;
 
+export type AnalyticsEventType =
+  | "page_view"
+  | "matchmaker_started"
+  | "match_returned"
+  | "no_match"
+  | "item_viewed"
+  | "claim_started"
+  | "claim_completed"
+  | "realtor_inquiry"
+  | "shop_inquiry"
+  | "contact_click"
+  | "instagram_click";
+
+export type AnalyticsEventRow = {
+  id: string;
+  event_type: AnalyticsEventType;
+  inventory_item_id: string | null;
+  path: string | null;
+  result_state: string | null;
+  created_at: string;
+}
+
+export type AnalyticsEventInsert = Omit<AnalyticsEventRow, "id" | "created_at"> &
+  Partial<Pick<AnalyticsEventRow, "id">>;
+
 export type Database = {
   public: {
     Tables: {
@@ -155,6 +180,12 @@ export type Database = {
         Row: AiUsageLogRow;
         Insert: AiUsageLogInsert;
         Update: Partial<AiUsageLogInsert>;
+        Relationships: [];
+      };
+      analytics_events: {
+        Row: AnalyticsEventRow;
+        Insert: AnalyticsEventInsert;
+        Update: Partial<AnalyticsEventInsert>;
         Relationships: [];
       };
     };

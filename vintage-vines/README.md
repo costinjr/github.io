@@ -4,7 +4,7 @@ One-of-one plant shop website. Next.js (App Router) + TypeScript + Tailwind CSS 
 
 Build spec: section-by-section product and build specification, implemented one numbered section at a time per its build sequence (`§17`).
 
-## Status: Phase 8 (partial) — claim infrastructure, checkout blocked on a provider decision
+## Status: Phase 9 done — every build-sequence phase implemented; Phase 8 checkout still blocked on a provider decision
 
 Live Supabase project: connected as of this phase — see `HANDOFF.md` for deploy steps and admin access. Schema, storage, and admin_users are already applied there.
 
@@ -108,6 +108,20 @@ Phase 8 — Online claim and payment (`src/lib/claims/`, partial):
 - A second real bug found by testing, not assumed: the proxy's per-request session check had the exact same "unhandled Supabase error" bug this session already found twice in Phases 4 and 7 — except this one runs on *every single request to the site*, not just the matchmaker. Fixed the same way: catch, log, degrade to "signed out" rather than crashing every route during an Auth outage.
 - **Deliberately not wired to any visitor-facing button.** Section 18 explicitly rejects a "reservation-request checkout mode" — a hold with no payment step immediately following it would effectively be that rejected mode if it sat behind a live "Claim this exact piece" button. That button stays honestly disabled until real payment can follow it immediately.
 - Three things need your decision or an account before checkout can be finished, all in `HANDOFF.md`: a payment provider (the spec requires "a hosted-payment provider adapter" but never names one — Stripe is the obvious default, but that's not mine to choose for you), that provider's API keys, and a geocoding/distance API to compute the spec's mileage-based delivery fees automatically (until then, the honest answer is a manual fee Libby confirms, not a fake auto-calculation with nothing to measure distance with).
+
+Phase 9 — Finish (accessibility, performance, analytics, metadata, error monitoring):
+
+- Accessibility: a real automated WCAG 2.2 AA audit (`@axe-core/playwright` against actually-rendered pages, not a static lint pass) caught two genuine contrast failures — `--color-brass` and `--color-terracotta` in `globals.css` were both under the 4.5:1 normal-text minimum in places a static scan alone wouldn't have hit (an error/alert state, an eyebrow label), since those states aren't visible on a page's default render. Fixed by computing darker shades against a hand-implemented relative-luminance formula (verifying the exact ratio, not eyeballing it), then re-running axe to confirm zero violations. Also fixed a footer touch-target under the 24×24px WCAG 2.5.8 minimum.
+- Performance: no automated Lighthouse infrastructure exists in this sandbox, so this was a code-review-level pass — confirmed every real image goes through `next/image` (the one raw `<img>`, a local blob preview in the photo uploader, can't use it and is already ESLint-suppressed with a reason), `"use client"` stays scoped to genuinely interactive components (forms, galleries, admin tooling), and no heavy dependency (the Anthropic SDK, Supabase admin client) leaks into a client bundle.
+- Analytics (`src/lib/analytics/`): first-party, privacy-minded event logging per section 15 — a new `analytics_events` table (migration `0004_analytics.sql`, RLS enabled/zero policies, same server-only pattern as the AI usage tables), a fire-and-forget `logEvent()` that never fails the feature it's measuring, and a `TrackedLink`/`PageViewTracker` pair for click and page-view tracking. Wired into the matchmaker, item views, hold creation, and every contact/inquiry path. No third-party tracker, no free-text visitor input ever stored.
+- Metadata and social cards: `sitemap.ts` (built from the same `publicRoutes` config Phase 1 defined, so `/admin` is excluded by construction, not by a second list that could drift), `robots.ts`, a palette-only Open Graph card (`opengraph-image.tsx`, since no brand photograph exists yet — same honest gap as the landing-page hero), and `LocalBusiness` JSON-LD in the root layout using only verified facts (no street address, no opening hours/price range — both PENDING).
+- Error monitoring: no third-party service was ever named or supplied, so rather than guess one, `src/lib/log-error.ts` centralizes every server-side error behind one `logError()` call, retrofitted onto six pre-existing `console.error` sites. Upgrading to a real service later (Sentry or similar) is a one-file change.
+
+**A real build failure caught by actually building, not just reading the code back:** `opengraph-image.tsx`'s `ImageResponse` failed to prerender with `Expected <div> to have explicit "display: flex"...` — Satori (the renderer behind `ImageResponse`) requires an explicit `display` style on any `<div>` with more than one child node, and a `{city}, {state}` line was three separate JSX children (two expressions plus a literal string), not one. Fixed by collapsing it into a single template-string expression; confirmed with a clean `next build` afterward.
+
+**Verified:** full `tsc`/ESLint/`next build` (all 17 routes, including `/sitemap.xml`, `/robots.txt`, and `/opengraph-image`, building cleanly), 54 unit tests across 7 files (`npm run test`), and the accessibility fixes confirmed with a real axe-core run showing zero violations both before and after the fix (i.e., the fix didn't just move the failure).
+
+All nine build-sequence phases (`§17`) are now implemented. What's left is exactly what `HANDOFF.md` says it is: a payment provider decision and a geocoding/distance API to finish Phase 8's checkout, plus the launch-checklist items (section 19) that are content/business decisions rather than code — Libby-approved copy, real brand photography, and final legal/policy pages once a payment provider is chosen.
 
 ## Development
 

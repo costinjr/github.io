@@ -1,4 +1,5 @@
 import "server-only";
+import { logEvent } from "@/lib/analytics/log-event";
 import { getAvailableInventory, type InventoryItemWithImages } from "@/lib/inventory";
 import { matchInventory } from "@/lib/matching/match";
 import { explainMatch, explainNoCompatibleResult, NO_INVENTORY_MESSAGE } from "@/lib/matching/templates";
@@ -58,11 +59,14 @@ export async function runMatchmaker(
     return { kind: "rate_limited" };
   }
 
+  await logEvent("matchmaker_started");
+
   const visitorText = rawVisitorText.slice(0, MAX_MATCHMAKER_TEXT_LENGTH);
 
   const items = await getAvailableInventory();
   if (items.length === 0) {
     // Section 6: "No inventory ... Do not call the AI."
+    await logEvent("no_match", { resultState: "no_inventory" });
     return { kind: "no_inventory", message: NO_INVENTORY_MESSAGE };
   }
 
@@ -70,13 +74,20 @@ export async function runMatchmaker(
   const outcome = matchInventory(items, preferences);
 
   if (outcome.kind === "no_inventory") {
+    await logEvent("no_match", { resultState: "no_inventory" });
     return { kind: "no_inventory", message: NO_INVENTORY_MESSAGE };
   }
   if (outcome.kind === "no_compatible_result") {
+    await logEvent("no_match", { resultState: outcome.limitingReason });
     return { kind: "no_compatible_result", message: explainNoCompatibleResult(outcome.limitingReason) };
   }
 
   const explanation = await resolveExplanation(visitorText, outcome);
+
+  await logEvent("match_returned", {
+    inventoryItemId: outcome.selected.item.id,
+    resultState: outcome.confidence,
+  });
 
   return {
     kind: "matched",

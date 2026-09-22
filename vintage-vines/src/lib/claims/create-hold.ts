@@ -1,4 +1,5 @@
 import "server-only";
+import { logEvent } from "@/lib/analytics/log-event";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { FulfillmentMethod } from "@/types/database";
 
@@ -79,6 +80,8 @@ export async function createInventoryHold(input: CreateHoldInput): Promise<Creat
     await supabase.from("inventory_items").update({ status: "available" }).eq("id", input.itemId);
     throw claimError;
   }
+
+  await logEvent("claim_started", { inventoryItemId: input.itemId });
 
   return { ok: true, claimId: claim.id, holdExpiresAt };
 }

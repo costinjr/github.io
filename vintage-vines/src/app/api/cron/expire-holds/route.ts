@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 import { sweepExpiredHolds } from "@/lib/claims/expire-holds";
+import { logError } from "@/lib/log-error";
 
 export async function GET(request: NextRequest) {
   if (env.CRON_SECRET) {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     const result = await sweepExpiredHolds();
     return NextResponse.json(result);
   } catch (error) {
-    console.error("[cron/expire-holds] sweep failed:", error);
+    logError("cron/expire-holds", error);
     return NextResponse.json({ error: "Sweep failed" }, { status: 500 });
   }
 }
