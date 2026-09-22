@@ -4,7 +4,7 @@ One-of-one plant shop website. Next.js (App Router) + TypeScript + Tailwind CSS 
 
 Build spec: section-by-section product and build specification, implemented one numbered section at a time per its build sequence (`§17`).
 
-## Status: Phase 4 — Public inventory
+## Status: Phase 5 — Core pages
 
 Phase 1 — Foundation:
 
@@ -57,6 +57,16 @@ Phase 4 — Public inventory:
 **A real bug this phase's testing caught:** `getAvailableInventory`/`getInventoryItemBySlug` originally let a Supabase error propagate and crash the page with a 500. I only found this because I actually loaded the pages in this environment (no live Supabase project configured) instead of assuming the happy path — and it's not just a sandbox artifact: the exact same crash would hit production during any real Supabase outage. Fixed by having every public inventory query catch and log, then fall back to the same empty state a genuinely empty catalog shows (`src/lib/inventory.ts`) — matching the spec's own "empty can still feel alive" principle instead of a stack trace.
 
 **Verified**: full `tsc`/ESLint/`next build`; the empty-state, populated-grid, and item-detail pages actually rendered and screenshotted (with temporary fixture data standing in for a live Supabase project, then reverted) at desktop and mobile widths, including edge cases like null optional fields; the filter checkboxes exercised end-to-end with Playwright (checking "Bright light" correctly narrowed 3 items to 1, clearing restored all 3).
+
+Phase 5 — Core pages:
+
+- Landing page (`/`): hero, plant-matchmaker teaser, "how it works," live "Available now" grid (reuses Phase 4's `getLandingInventory`/`ItemCard`, omitted entirely when empty rather than repeating the empty-state block), realtor/shop cards, "Grown with Purpose," founder note
+- The matchmaker section is a real, honest stand-in for Phases 6/7 (deterministic matching + AI wrapper don't exist yet): visitors can type and submit, and get an inline reply that emails their own words straight to Libby — not a disabled control sitting at the top of the homepage
+- `/about`, `/realtors`, `/shops` filled in with the spec's actual approved copy (founder story quote, realtor pricing/lead time/fulfillment, shop terms) — all sourced from `src/config/business.ts` and the new `src/config/site-copy.ts` (page-level marketing copy, kept separate from both business facts and components per section 11)
+- Realtor and shop "start an order" / "ask about a display" actions are `mailto:` links with a prefilled subject and body — the spec never describes an online ordering flow for either B2B path (Phase 8's checkout is explicitly the *inventory claim* flow only), so a direct line to Libby is the complete, honest implementation, not a stand-in for something bigger
+- `PurposeBlock` is shared between the landing page and About so the PENDING beneficiary org/donation amount only needs to be wired up in one place once Libby decides
+
+**A real gap caught before it shipped, not after:** the landing page hero was originally written to reference `/hero-brass-tumbler-teapot.jpg` — the exact photo section 2 describes — but that file was never actually supplied to this build. Rather than ship a broken image reference, the hero renders a palette-only placeholder with a comment marking exactly where the real photo goes and how to wire it in (`next/image`, `fill`, `object-cover`). This is a genuine missing asset, not a PENDING decision — someone needs to supply the actual photo file.
 
 ## Development
 
