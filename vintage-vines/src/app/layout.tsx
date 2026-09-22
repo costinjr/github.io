@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Fraunces, Karla } from "next/font/google";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
 import { business } from "@/config/business";
 import { env } from "@/lib/env";
 import "./globals.css";
@@ -33,11 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${fraunces.variable} ${karla.variable}`}>
-      <body className="flex min-h-screen flex-col">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
-      </body>
+      <body className="flex min-h-screen flex-col">{children}</body>
     </html>
   );
 }

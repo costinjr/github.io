@@ -14,7 +14,7 @@ export type Watering = "infrequent" | "regular" | "frequent";
 export type ClaimStatus = "hold" | "expired" | "paid" | "cancelled";
 export type FulfillmentMethod = "pickup" | "delivery";
 
-export interface InventoryItemRow {
+export type InventoryItemRow = {
   id: string;
   slug: string;
   status: InventoryStatus;
@@ -49,7 +49,7 @@ export type InventoryItemInsert = Omit<
 
 export type InventoryItemUpdate = Partial<InventoryItemInsert>;
 
-export interface InventoryImageRow {
+export type InventoryImageRow = {
   id: string;
   inventory_item_id: string;
   storage_key: string;
@@ -67,7 +67,7 @@ export type InventoryImageInsert = Omit<InventoryImageRow, "id" | "created_at"> 
 
 export type InventoryImageUpdate = Partial<InventoryImageInsert>;
 
-export interface ClaimRow {
+export type ClaimRow = {
   id: string;
   inventory_item_id: string;
   status: ClaimStatus;
@@ -90,34 +90,40 @@ export type ClaimInsert = Omit<ClaimRow, "id" | "created_at" | "updated_at"> &
 
 export type ClaimUpdate = Partial<ClaimInsert>;
 
-export interface AdminUserRow {
+export type AdminUserRow = {
   email: string;
   created_at: string;
 }
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       inventory_items: {
         Row: InventoryItemRow;
         Insert: InventoryItemInsert;
         Update: InventoryItemUpdate;
+        Relationships: [];
       };
       inventory_images: {
         Row: InventoryImageRow;
         Insert: InventoryImageInsert;
         Update: InventoryImageUpdate;
+        Relationships: [];
       };
       claims: {
         Row: ClaimRow;
         Insert: ClaimInsert;
         Update: ClaimUpdate;
+        Relationships: [];
       };
       admin_users: {
         Row: AdminUserRow;
         Insert: AdminUserRow;
         Update: Partial<AdminUserRow>;
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
   };
 }
