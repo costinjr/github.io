@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+:root {
+  --color-cream: #f6efe1;
+  --color-cream-deep: #ece0c7;
+  --color-paper: #fbf7ee;
+  --color-ink: #2b2a1f;
+  --color-ink-soft: #4a4638;
+  --color-green: #2f4a34;
+  --color-green-dark: #23372a;
+  --color-terracotta: #b15e3d;
+  --color-brass: #a9873f;
+  --color-line: #ded0b4;
+
+  --radius-sm: 4px;
+  --radius-md: 10px;
+  --radius-arch: 999px 999px 0 0;
+}
+
+@theme inline {
+  --color-cream: var(--color-cream);
+  --color-cream-deep: var(--color-cream-deep);
+  --color-paper: var(--color-paper);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-green: var(--color-green);
+  --color-green-dark: var(--color-green-dark);
+  --color-terracotta: var(--color-terracotta);
+  --color-brass: var(--color-brass);
+  --color-line: var(--color-line);
+
+  --font-serif: var(--font-fraunces);
+  --font-sans: var(--font-karla);
+
+  --radius-arch: var(--radius-arch);
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-serif);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
