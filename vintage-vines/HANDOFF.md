@@ -38,8 +38,9 @@ app).
 | `NEXT_PUBLIC_SUPABASE_URL` | your project URL | Supabase Dashboard → **Settings** → **API** → **Project URL** |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the `anon` `public` key | same page, **Project API keys** |
 | `SUPABASE_SERVICE_ROLE_KEY` | the `service_role` `secret` key | same page — **do not** put this in a `NEXT_PUBLIC_*` variable, it bypasses all database security |
+| `ANTHROPIC_API_KEY` | *(optional)* | See section 3 below — leave unset and the plant matchmaker runs in deterministic-only mode, which is a fully working fallback, not a broken state |
 
-Set all four for **Production**, **Preview**, and **Development**
+Set these for **Production**, **Preview**, and **Development**
 environments (Vercel asks per-variable, or has an "all environments"
 checkbox).
 
@@ -73,6 +74,52 @@ Two steps, same as your own admin setup:
 
 ---
 
+## 3. Run the AI usage tables migration
+
+- [ ] Done
+
+Phase 7 (the plant matchmaker's AI wrapper) added a new migration for
+rate-limiting and monthly spend-cap tracking. Same as Step 1 of the
+original three: **SQL Editor → New query**, paste, run.
+
+```sql
+-- AI wrapper support tables (section 6: "Rate-limit each public AI
+-- endpoint by IP and session ... Enforce a hard monthly AI API spend
+-- cap"). Server-only: RLS is enabled with zero policies, which denies
+-- every role except the service-role key (which bypasses RLS). Only
+-- server code (src/lib/supabase/admin.ts) should ever touch these —
+-- there is deliberately no public or admin_users policy here.
+
+create table ai_requests (
+  id uuid primary key default gen_random_uuid(),
+  -- A hash of IP+session, never the raw value — section 6: "Do not
+  -- store free-text input by default" extends to not storing anything
+  -- that identifies the visitor either.
+  client_key text not null,
+  endpoint text not null check (endpoint in ('matchmaker', 'help_my_plant')),
+  created_at timestamptz not null default now()
+);
+
+create index ai_requests_client_key_created_at_idx on ai_requests (client_key, created_at);
+
+create table ai_usage_log (
+  id uuid primary key default gen_random_uuid(),
+  endpoint text not null check (endpoint in ('matchmaker', 'help_my_plant')),
+  estimated_cost_cents integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index ai_usage_log_created_at_idx on ai_usage_log (created_at);
+
+alter table ai_requests enable row level security;
+alter table ai_usage_log enable row level security;
+```
+
+This is needed regardless of whether you set up an AI key — rate
+limiting protects the deterministic-only matchmaker endpoint too.
+
+---
+
 ## Decisions and accounts still needed for later phases
 
 ### Phase 6 (done) — one open design question, not a blocker
@@ -91,18 +138,39 @@ dimension. Worth a decision from you or Libby eventually: either pick a
 concrete signal (e.g. a `gift_worthy` flag, or map specific vessel
 styles/sizes to specific occasions) or leave it as-is.
 
-### Phase 7 (AI wrapper) — needs an API key
+### Phase 7 (done) — AI wrapper works, but runs deterministic-only without a key
 
-The free-text parser and AI-generated match explanation need a real AI
-provider. I'll build the adapter, validation, rate limiting, and cost
-cap against a generic interface, with one concrete implementation
-(Anthropic's API, since that's the natural default and Claude Code
-itself runs on it) — but nothing will actually call out to it without
-an API key. If you want live AI parsing/blurbs rather than the
-deterministic-only fallback (which is itself a required, working spec
-behavior, not a broken state), get an API key from console.anthropic.com
-and add it as `ANTHROPIC_API_KEY` (exact name to be confirmed once I
-write that code) in Vercel's environment variables.
+Built: a provider-agnostic adapter interface, one concrete
+implementation (Anthropic's API — structured tool-use output, validated
+against the exact section-6 schema before it's ever shown to a
+visitor), rate limiting and a monthly spend cap backed by the new
+`ai_requests`/`ai_usage_log` tables (Step 3 above), and a deterministic
+keyword-based fallback parser for when AI is unavailable, over budget,
+or its output fails validation.
+
+The plant matchmaker on the landing page is fully wired up and works
+right now with zero AI configuration — it runs the deterministic
+fallback parser → Phase 6's matcher → deterministic explanation
+templates. I tested this exact path end to end (with temporary fixture
+inventory, since this sandbox can't reach your live Supabase project)
+and it correctly matched, excluded a toxic item under a pet-safety
+request, and explained the result using only real facts.
+
+To turn on live AI parsing and warmer AI-written explanations instead
+of the deterministic fallback:
+
+1. Get an API key at **console.anthropic.com**.
+2. Add `ANTHROPIC_API_KEY` to Vercel's environment variables (Production/Preview/Development).
+
+Optional tuning, both have working defaults:
+
+- `ANTHROPIC_MODEL` — defaults to `claude-haiku-4-5-20251001`.
+- `AI_MONTHLY_SPEND_CAP_CENTS` — defaults to `2000` ($20/month). Section
+  6 requires *some* hard cap but never states the number — this is a
+  starting point, not a business decision; change it to whatever you
+  and Libby actually want to spend.
+
+Nothing here blocks anything else — the matchmaker works today either way.
 
 ### Phase 8 (online claim and payment) — needs a decision + an account
 

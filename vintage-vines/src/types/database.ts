@@ -1,7 +1,8 @@
 /**
- * Hand-written to match supabase/migrations/0001_init.sql and 0002_storage.sql.
- * Regenerate with `supabase gen types typescript` once a live project
- * exists, and keep this file's shape as the target.
+ * Hand-written to match supabase/migrations/0001_init.sql,
+ * 0002_storage.sql, and 0003_ai_usage.sql. Regenerate with
+ * `supabase gen types typescript` once a live project exists, and keep
+ * this file's shape as the target.
  */
 
 export type InventoryStatus = "draft" | "available" | "checkout_hold" | "sold" | "archived";
@@ -95,6 +96,28 @@ export type AdminUserRow = {
   created_at: string;
 }
 
+export type AiEndpoint = "matchmaker" | "help_my_plant";
+
+export type AiRequestRow = {
+  id: string;
+  client_key: string;
+  endpoint: AiEndpoint;
+  created_at: string;
+}
+
+export type AiRequestInsert = Omit<AiRequestRow, "id" | "created_at"> &
+  Partial<Pick<AiRequestRow, "id">>;
+
+export type AiUsageLogRow = {
+  id: string;
+  endpoint: AiEndpoint;
+  estimated_cost_cents: number;
+  created_at: string;
+}
+
+export type AiUsageLogInsert = Omit<AiUsageLogRow, "id" | "created_at"> &
+  Partial<Pick<AiUsageLogRow, "id">>;
+
 export type Database = {
   public: {
     Tables: {
@@ -120,6 +143,18 @@ export type Database = {
         Row: AdminUserRow;
         Insert: AdminUserRow;
         Update: Partial<AdminUserRow>;
+        Relationships: [];
+      };
+      ai_requests: {
+        Row: AiRequestRow;
+        Insert: AiRequestInsert;
+        Update: Partial<AiRequestInsert>;
+        Relationships: [];
+      };
+      ai_usage_log: {
+        Row: AiUsageLogRow;
+        Insert: AiUsageLogInsert;
+        Update: Partial<AiUsageLogInsert>;
         Relationships: [];
       };
     };

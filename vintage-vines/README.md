@@ -4,7 +4,7 @@ One-of-one plant shop website. Next.js (App Router) + TypeScript + Tailwind CSS 
 
 Build spec: section-by-section product and build specification, implemented one numbered section at a time per its build sequence (`§17`).
 
-## Status: Phase 6 — Deterministic matching
+## Status: Phase 7 — AI wrapper
 
 Live Supabase project: connected as of this phase — see `HANDOFF.md` for deploy steps and admin access. Schema, storage, and admin_users are already applied there.
 
@@ -82,7 +82,23 @@ Phase 6 — Deterministic matching (`src/lib/matching/`):
 
 **A real bug the tests caught immediately:** the deterministic match explanation's headline could exceed the 70-character limit section 6's AI output contract sets — a test asserting that limit failed on the first run against a long display name. Fixed with a template that falls back to a shorter phrasing, then to a truncated one, before exceeding the limit. This matters beyond Phase 6: Phase 7 reuses this exact template as its AI-unavailable fallback, so the bug would otherwise have shipped there too.
 
-Not wired into the landing page yet — the matchmaker teaser still emails Libby directly, since it needs Phase 7's free-text parser to turn a visitor's sentence into a `MatchPreferences` object before this engine has anything to run on.
+Not wired into the landing page yet as of Phase 6 — the matchmaker teaser emailed Libby directly, since it needed Phase 7's free-text parser to turn a visitor's sentence into a `MatchPreferences` object. Phase 7 (below) wires it up for real.
+
+Phase 7 — AI wrapper (`src/lib/ai/`):
+
+- Provider-agnostic `AiProvider` interface (`provider.ts`) plus one concrete implementation, `AnthropicProvider` — structured tool-use output for both the free-text parser and the match explanation, each validated against a strict zod schema (`schemas.ts`) mirroring section 6's contracts before anything reaches a visitor
+- A deterministic, regex/keyword-based fallback parser (`fallback-parser.ts`) implements section 6's "AI unavailable: run deterministic matching from any explicit criteria" literally — it only ever sets a field on a clear, explicit signal, staying "unknown" rather than guessing, and it's immune to prompt injection by construction (it's pattern matching, nothing it reads is ever executed)
+- The plant matchmaker is now fully wired up and live on the landing page — with **zero AI configuration**, it runs deterministic parser → Phase 6's matcher → deterministic templates, and works completely on its own
+- Rate limiting and a hard monthly spend cap (`rate-limit.ts`, `cost-cap.ts`) backed by two new tables (migration `0003_ai_usage.sql`) — rate limiting fails *open* on a storage outage (an abuse-prevention mechanism going down shouldn't take the whole feature with it), the spend cap fails *closed* (can't verify we're under budget → skip AI, not risk uncapped spend)
+- `validate-blurb.ts` implements section 6's server-side checks literally: rejects an id outside the candidate set, a stated price that doesn't match the record, a care claim that contradicts `care_difficulty` (an "easy" claim against an `involved` plant is caught, not just discouraged in a prompt), and a silently-dropped required constraint note
+- Explicit timeouts everywhere in this path, not just the AI call itself (`with-timeout.ts`) — the Anthropic SDK's own default is 10 minutes, far too long for a page waiting on a response, and an unbounded Supabase call is exactly as capable of hanging a request as an unbounded AI call is
+- One real, non-blocking gap, recorded in `HANDOFF.md`: section 6 requires *some* hard monthly AI spend cap but never states the number — defaults to $20/month via `AI_MONTHLY_SPEND_CAP_CENTS`, trivially overridden, not a guess at a business decision
+
+**Two real bugs found by actually running this against the live dev server, not just reading the code back:**
+1. An unhandled Supabase error in the brand-new rate-limit check crashed the entire matchmaker Server Action with a 500 — reproduced by loading the matchmaker in this sandbox (Supabase is unreachable here), which is exactly what a real Supabase outage would do in production too. Fixed by making the rate limiter fail open and the cost cap fail closed, both bounded by an explicit timeout, matching Phase 4's established resilience pattern instead of introducing a new failure mode.
+2. Confirmed via a full Playwright run with temporary fixture inventory: a message mentioning travel, forgetting to water, a pet, and a dim office correctly excluded a toxic candidate, matched a pet-safe one, scored it "strong" confidence, and explained the match using only that item's real stored facts.
+
+Needs your input to go further: an `ANTHROPIC_API_KEY` for live AI parsing/explanations (optional — deterministic mode is a complete, working fallback, not a stand-in), and running the new `0003_ai_usage.sql` migration. Both are in `HANDOFF.md`.
 
 ## Development
 

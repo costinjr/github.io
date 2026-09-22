@@ -7,6 +7,15 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
   // Server-only. Never prefix with NEXT_PUBLIC_ — it bypasses RLS.
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  // Optional: the matchmaker and Help My Plant run in deterministic-only
+  // mode (a required, working fallback, not a broken state) whenever
+  // this is unset.
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  ANTHROPIC_MODEL: z.string().min(1).default("claude-haiku-4-5-20251001"),
+  // Cents. Section 6 requires a hard monthly AI spend cap but never
+  // states the number — this default is a conservative starting point,
+  // not a business decision; adjust freely via env var.
+  AI_MONTHLY_SPEND_CAP_CENTS: z.coerce.number().int().positive().default(2000),
 });
 
 export const env = envSchema.parse({
@@ -15,4 +24,7 @@ export const env = envSchema.parse({
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+  ANTHROPIC_MODEL: process.env.ANTHROPIC_MODEL,
+  AI_MONTHLY_SPEND_CAP_CENTS: process.env.AI_MONTHLY_SPEND_CAP_CENTS,
 });
