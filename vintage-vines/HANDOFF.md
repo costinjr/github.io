@@ -39,6 +39,7 @@ app).
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the `anon` `public` key | same page, **Project API keys** |
 | `SUPABASE_SERVICE_ROLE_KEY` | the `service_role` `secret` key | same page — **do not** put this in a `NEXT_PUBLIC_*` variable, it bypasses all database security |
 | `ANTHROPIC_API_KEY` | *(optional)* | See section 3 below — leave unset and the plant matchmaker runs in deterministic-only mode, which is a fully working fallback, not a broken state |
+| `CRON_SECRET` | *(optional but recommended)* any random string you generate | Protects the hold-expiry sweep endpoint — see the Phase 8 notes near the bottom of this file |
 
 Set these for **Production**, **Preview**, and **Development**
 environments (Vercel asks per-variable, or has an "all environments"
@@ -172,11 +173,51 @@ Optional tuning, both have working defaults:
 
 Nothing here blocks anything else — the matchmaker works today either way.
 
-### Phase 8 (online claim and payment) — needs a decision + an account
+### Phase 8 (partially done) — the backend plumbing is real and tested; checkout itself needs two decisions from you
 
-Section 9 requires a "hosted-payment provider adapter" but never names
-one. This is your call, not mine to guess: Stripe is the overwhelmingly
-standard choice for a Next.js app like this, but I won't build against
-it without you confirming that's what you want, and either way it
-needs a real account and API keys before anything can actually process
-a payment. I'll note the specifics here once I get to this phase.
+**Built and verified:** the atomic double-claim prevention (section 9:
+"Prevent double claims with an atomic database operation") and hold
+expiration. `src/lib/claims/create-hold.ts` does the actual hold via a
+single conditional `UPDATE ... WHERE status = 'available'` — Postgres's
+own concurrency guarantees mean that of two simultaneous claims on the
+same item, only one can ever match that condition. I didn't just assert
+this; I proved it by firing two real, truly concurrent transactions at
+a local Postgres instance racing on the same row — one got the row
+back, the other got zero rows, exactly once. `src/lib/claims/expire-holds.ts`
+releases holds whose 15-minute window has passed, wired to run every 5
+minutes via `src/app/api/cron/expire-holds/route.ts` and `vercel.json`.
+Set a `CRON_SECRET` environment variable in Vercel (any random string)
+and Vercel will automatically send it as a Bearer token, so the route
+isn't callable by anyone who finds the URL. (Vercel's free Hobby plan
+limits cron frequency — if you're on Hobby, either accept a slower
+sweep or trigger the same URL from any external scheduler instead,
+like a GitHub Actions cron or cron-job.org, since it's just a normal
+authenticated HTTP endpoint.)
+
+**Deliberately NOT wired to any button yet.** Section 18 is explicit:
+*"RESOLVED: v1 takes online payment ... do not build or describe a
+reservation-request checkout mode."* A hold with no payment step
+immediately following it — which is all I could build without a
+provider — would effectively *be* that rejected reservation mode if I
+put it behind a live "Claim this exact piece" button. So that button
+stays honestly disabled (built in Phase 4) until it can lead straight
+into real payment.
+
+**What's still needed, both from you:**
+
+1. **A payment provider decision.** Section 9 requires a "hosted-payment
+   provider adapter" but never names one. Stripe is the standard choice
+   for a Next.js app like this, but I'm not choosing it for you —
+   confirm Stripe (or name another) and I'll build the adapter and wire
+   it to the hold mechanism above.
+2. **A real account and API keys for whichever provider** — nothing can
+   process an actual payment without them, however the adapter is built.
+3. **One more provider-shaped gap I found while building this**: the
+   fulfillment fee tiers in section 9 are distance-based ("free within
+   Upper Arlington and up to 10 miles; $10 for 10 to 20 miles...").
+   Computing that automatically from a customer's address needs a
+   geocoding/distance API (e.g. Google Maps), which is yet another
+   account/key this spec never names. Until you decide on one, the
+   honest interim answer is a manual one: collect the delivery address
+   and let Libby confirm the fee herself, rather than pretending to
+   auto-calculate a distance with no way to actually measure it.

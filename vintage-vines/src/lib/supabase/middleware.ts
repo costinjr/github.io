@@ -35,9 +35,17 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return { response, user };
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return { response, user };
+  } catch (error) {
+    // Every request in the app passes through this, not just /admin —
+    // an Auth outage here must not take down the whole site. Treat it
+    // as signed out; requireAdmin() will send a real admin to sign in
+    // again, which is a much smaller problem than every route 500ing.
+    console.error("[proxy] session check failed, treating as signed out:", error);
+    return { response, user: null };
+  }
 }

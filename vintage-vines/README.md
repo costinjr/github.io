@@ -4,7 +4,7 @@ One-of-one plant shop website. Next.js (App Router) + TypeScript + Tailwind CSS 
 
 Build spec: section-by-section product and build specification, implemented one numbered section at a time per its build sequence (`§17`).
 
-## Status: Phase 7 — AI wrapper
+## Status: Phase 8 (partial) — claim infrastructure, checkout blocked on a provider decision
 
 Live Supabase project: connected as of this phase — see `HANDOFF.md` for deploy steps and admin access. Schema, storage, and admin_users are already applied there.
 
@@ -99,6 +99,15 @@ Phase 7 — AI wrapper (`src/lib/ai/`):
 2. Confirmed via a full Playwright run with temporary fixture inventory: a message mentioning travel, forgetting to water, a pet, and a dim office correctly excluded a toxic candidate, matched a pet-safe one, scored it "strong" confidence, and explained the match using only that item's real stored facts.
 
 Needs your input to go further: an `ANTHROPIC_API_KEY` for live AI parsing/explanations (optional — deterministic mode is a complete, working fallback, not a stand-in), and running the new `0003_ai_usage.sql` migration. Both are in `HANDOFF.md`.
+
+Phase 8 — Online claim and payment (`src/lib/claims/`, partial):
+
+- `create-hold.ts` implements section 9's "prevent double claims with an atomic database operation" as a single conditional `UPDATE inventory_items ... WHERE status = 'available'` — not asserted, *proven*: I fired two genuinely concurrent transactions at a real local Postgres instance racing to claim the identical row, and watched one come back with the row and `UPDATE 1`, the other with nothing and `UPDATE 0`. Exactly one hold, every time.
+- `expire-holds.ts` releases holds past their 15-minute window back to `available` — but only if an admin hasn't already moved the item to `sold` or `archived` in the meantime, which the sweep correctly leaves alone
+- Wired to run automatically every 5 minutes via `vercel.json` + `src/app/api/cron/expire-holds/route.ts`, protected by a `CRON_SECRET` bearer check
+- A second real bug found by testing, not assumed: the proxy's per-request session check had the exact same "unhandled Supabase error" bug this session already found twice in Phases 4 and 7 — except this one runs on *every single request to the site*, not just the matchmaker. Fixed the same way: catch, log, degrade to "signed out" rather than crashing every route during an Auth outage.
+- **Deliberately not wired to any visitor-facing button.** Section 18 explicitly rejects a "reservation-request checkout mode" — a hold with no payment step immediately following it would effectively be that rejected mode if it sat behind a live "Claim this exact piece" button. That button stays honestly disabled until real payment can follow it immediately.
+- Three things need your decision or an account before checkout can be finished, all in `HANDOFF.md`: a payment provider (the spec requires "a hosted-payment provider adapter" but never names one — Stripe is the obvious default, but that's not mine to choose for you), that provider's API keys, and a geocoding/distance API to compute the spec's mileage-based delivery fees automatically (until then, the honest answer is a manual fee Libby confirms, not a fake auto-calculation with nothing to measure distance with).
 
 ## Development
 

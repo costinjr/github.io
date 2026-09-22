@@ -16,6 +16,10 @@ const envSchema = z.object({
   // states the number — this default is a conservative starting point,
   // not a business decision; adjust freely via env var.
   AI_MONTHLY_SPEND_CAP_CENTS: z.coerce.number().int().positive().default(2000),
+  // Protects the cron-triggered hold-expiry sweep from being called by
+  // anyone who finds the URL. Vercel sends this as a Bearer token
+  // automatically for scheduled invocations when this var is set.
+  CRON_SECRET: z.string().min(1).optional(),
 });
 
 export const env = envSchema.parse({
@@ -27,4 +31,5 @@ export const env = envSchema.parse({
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   ANTHROPIC_MODEL: process.env.ANTHROPIC_MODEL,
   AI_MONTHLY_SPEND_CAP_CENTS: process.env.AI_MONTHLY_SPEND_CAP_CENTS,
+  CRON_SECRET: process.env.CRON_SECRET,
 });
