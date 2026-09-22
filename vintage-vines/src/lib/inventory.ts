@@ -7,20 +7,36 @@ export interface InventoryItemWithImages extends InventoryItemRow {
 }
 
 /**
+ * A visitor can only ever see the piece grid or an empty state — never a
+ * stack trace (section 9: "Empty can still feel alive"). A misconfigured
+ * or unreachable Supabase project degrades to the same empty state a
+ * genuinely empty catalog shows; the real error still goes to the server
+ * log for anyone watching it.
+ */
+function logInventoryError(context: string, error: unknown) {
+  console.error(`[inventory] ${context} failed, falling back to empty:`, error);
+}
+
+/**
  * All currently available items, in Libby's manual sort order. RLS
  * (public_read_available_items) is the actual enforcement; the status
  * filter here just keeps the query intent explicit.
  */
 export async function getAvailableInventory(): Promise<InventoryItemWithImages[]> {
-  const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from("inventory_items")
-    .select("*, inventory_images(*)")
-    .eq("status", "available")
-    .order("sort_order", { ascending: true });
+  try {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .from("inventory_items")
+      .select("*, inventory_images(*)")
+      .eq("status", "available")
+      .order("sort_order", { ascending: true });
 
-  if (error) throw error;
-  return data as InventoryItemWithImages[];
+    if (error) throw error;
+    return data as InventoryItemWithImages[];
+  } catch (error) {
+    logInventoryError("getAvailableInventory", error);
+    return [];
+  }
 }
 
 /**
@@ -29,30 +45,40 @@ export async function getAvailableInventory(): Promise<InventoryItemWithImages[]
  * `featured` flag, which is a matchmaker scoring boost, section 6).
  */
 export async function getLandingInventory(limit = 6): Promise<InventoryItemWithImages[]> {
-  const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from("inventory_items")
-    .select("*, inventory_images(*)")
-    .eq("status", "available")
-    .order("sort_order", { ascending: true })
-    .limit(limit);
+  try {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .from("inventory_items")
+      .select("*, inventory_images(*)")
+      .eq("status", "available")
+      .order("sort_order", { ascending: true })
+      .limit(limit);
 
-  if (error) throw error;
-  return data as InventoryItemWithImages[];
+    if (error) throw error;
+    return data as InventoryItemWithImages[];
+  } catch (error) {
+    logInventoryError("getLandingInventory", error);
+    return [];
+  }
 }
 
-/** A single available item for its detail page, or null if not found/not available. */
+/** A single available item for its detail page, or null if not found/not available/unreachable. */
 export async function getInventoryItemBySlug(
   slug: string,
 ): Promise<InventoryItemWithImages | null> {
-  const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from("inventory_items")
-    .select("*, inventory_images(*)")
-    .eq("slug", slug)
-    .eq("status", "available")
-    .maybeSingle();
+  try {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .from("inventory_items")
+      .select("*, inventory_images(*)")
+      .eq("slug", slug)
+      .eq("status", "available")
+      .maybeSingle();
 
-  if (error) throw error;
-  return data as InventoryItemWithImages | null;
+    if (error) throw error;
+    return data as InventoryItemWithImages | null;
+  } catch (error) {
+    logInventoryError(`getInventoryItemBySlug(${slug})`, error);
+    return null;
+  }
 }

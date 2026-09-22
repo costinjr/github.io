@@ -4,7 +4,7 @@ One-of-one plant shop website. Next.js (App Router) + TypeScript + Tailwind CSS 
 
 Build spec: section-by-section product and build specification, implemented one numbered section at a time per its build sequence (`§17`).
 
-## Status: Phase 3 — Admin
+## Status: Phase 4 — Public inventory
 
 Phase 1 — Foundation:
 
@@ -43,6 +43,20 @@ Phase 3 — Admin:
 2. `item-form.tsx` (a client component) imported a constant from `image-processing.ts`, which also imports `sharp` — pulling the native image library into the browser bundle and breaking the build. Fixed by moving the shared constants into a dependency-free `upload-limits.ts`.
 
 **Not verifiable without a real Supabase project** (no live project exists yet): the actual magic-link email round trip, live Storage uploads, and RLS behavior under real HTTP traffic (Phase 2's RLS logic was verified against real Postgres directly; Phase 3 wires it up through Supabase's client libraries, which this environment can't run end-to-end without Auth/PostgREST/Storage servers). What's covered instead: full `tsc`/ESLint/`next build`, the proxy's redirect behavior against a running dev server, the magic-link form's client-server round trip, and the image-processing pipeline against a real JPEG.
+
+Phase 4 — Public inventory:
+
+- `/purchase`: the commerce wall — filters (light, care level, size, vessel style, price; "pet friendly" only appears once `business.petSafety.dataProvided` is true, since it can never match anything before that) over the full available-item grid, in Libby's manual sort order
+- `/inventory`: the same live catalog without filters, positioned as a browsing/lookbook view rather than the shopping wall — the spec names both `/purchase` and `/inventory` as separate required routes with overlapping descriptions; this is my resolution of that overlap, not a literal spec instruction, so it's worth confirming with Libby
+- `/purchase/[slug]`: item detail — photo gallery, full care/vessel/placement details, packaging, fulfillment tiers, and returns policy pulled straight from `business.ts`, plus `Product` JSON-LD (section 14) with live pricing and photos
+- Every card and the detail page carry the "this is the exact piece" language product principle 1 requires — never phrased as if the photo were representative stock
+- "Claim this exact piece" on a card is a real link to the item's detail page (checkout doesn't exist until Phase 8); on the detail page itself, where the real claim button belongs, it's rendered disabled with an honest note and a mailto fallback to Libby, rather than faked or silently broken
+- A stale or sold-out link renders a friendly "this piece has found its home" page instead of a bare 404
+- All three pages are `force-dynamic` — inventory changes need to show up immediately, not whenever the next static build happens to run
+
+**A real bug this phase's testing caught:** `getAvailableInventory`/`getInventoryItemBySlug` originally let a Supabase error propagate and crash the page with a 500. I only found this because I actually loaded the pages in this environment (no live Supabase project configured) instead of assuming the happy path — and it's not just a sandbox artifact: the exact same crash would hit production during any real Supabase outage. Fixed by having every public inventory query catch and log, then fall back to the same empty state a genuinely empty catalog shows (`src/lib/inventory.ts`) — matching the spec's own "empty can still feel alive" principle instead of a stack trace.
+
+**Verified**: full `tsc`/ESLint/`next build`; the empty-state, populated-grid, and item-detail pages actually rendered and screenshotted (with temporary fixture data standing in for a live Supabase project, then reverted) at desktop and mobile widths, including edge cases like null optional fields; the filter checkboxes exercised end-to-end with Playwright (checking "Bright light" correctly narrowed 3 items to 1, clearing restored all 3).
 
 ## Development
 
